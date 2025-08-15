@@ -232,6 +232,76 @@ void test_memory_management() {
     test_assert(1, "free_mat completes without error");
 }
 
+void test_set_mat_val() {
+    printf("\n--- Testing set_mat_val ---\n");
+    
+    mat* m = new_mat(3, 4);
+    set_mat_val(m, 7.5);
+    
+    test_assert(mat_all_equal(m, 7.5, EPSILON), "set_mat_val sets all values correctly");
+    
+    // Test with different value
+    set_mat_val(m, -2.3);
+    test_assert(mat_all_equal(m, -2.3, EPSILON), "set_mat_val overwrites previous values");
+    
+    // Test with zero
+    set_mat_val(m, 0.0);
+    test_assert(mat_all_equal(m, 0.0, EPSILON), "set_mat_val works with zero");
+    
+    free_mat(m);
+}
+
+void test_set_mat_diag() {
+    printf("\n--- Testing set_mat_diag ---\n");
+    
+    mat* square = new_mat(3, 3);
+    mat* nonsquare = new_mat(2, 3);
+    
+    // Initialize with zeros
+    set_mat_val(square, 0.0);
+    
+    int result = set_mat_diag(square, 5.0);
+    test_assert(result == 1, "set_mat_diag returns 1 for square matrix");
+    
+    // Check diagonal values
+    test_assert(fabs(square->values[0][0] - 5.0) < EPSILON, "set_mat_diag sets diagonal [0][0]");
+    test_assert(fabs(square->values[1][1] - 5.0) < EPSILON, "set_mat_diag sets diagonal [1][1]");
+    test_assert(fabs(square->values[2][2] - 5.0) < EPSILON, "set_mat_diag sets diagonal [2][2]");
+    
+    // Check off-diagonal values remain unchanged
+    test_assert(fabs(square->values[0][1]) < EPSILON, "set_mat_diag preserves off-diagonal values");
+    test_assert(fabs(square->values[1][0]) < EPSILON, "set_mat_diag preserves off-diagonal values");
+    
+    // Test with non-square matrix
+    int result2 = set_mat_diag(nonsquare, 3.0);
+    test_assert(result2 == 0, "set_mat_diag returns 0 for non-square matrix");
+    
+    free_mat(square);
+    free_mat(nonsquare);
+}
+
+void test_mat_all_equal() {
+    printf("\n--- Testing mat_all_equal ---\n");
+    
+    mat* m = new_mat(2, 3);
+    set_mat_val(m, 4.2);
+    
+    test_assert(mat_all_equal(m, 4.2, EPSILON) == 1, "mat_all_equal returns 1 for identical values");
+    test_assert(mat_all_equal(m, 4.2 + EPSILON/2, EPSILON) == 1, "mat_all_equal works within tolerance");
+    test_assert(mat_all_equal(m, 4.2 + EPSILON*2, EPSILON) == 0, "mat_all_equal returns 0 outside tolerance");
+    test_assert(mat_all_equal(m, 5.0, EPSILON) == 0, "mat_all_equal returns 0 for different values");
+    
+    // Test with one different value
+    m->values[1][2] = 999.0;
+    test_assert(mat_all_equal(m, 4.2, EPSILON) == 0, "mat_all_equal detects single different value");
+    
+    // Test with zero values
+    set_mat_val(m, 0.0);
+    test_assert(mat_all_equal(m, 0.0, EPSILON) == 1, "mat_all_equal works with zero values");
+    
+    free_mat(m);
+}
+
 int main() {
     printf("Running Matrix Library Tests\n");
     printf("============================\n");
@@ -246,6 +316,9 @@ int main() {
     test_get_row_mat();
     test_get_col_mat();
     test_memory_management();
+    test_set_mat_val();
+    test_set_mat_diag();
+    test_mat_all_equal();
     
     print_test_summary();
     

@@ -163,3 +163,36 @@ mat* get_row_mat(mat* matrix,unsigned int row){
   return new_row_matrix;
 
 }
+
+//setting all the cells of the matrix to a particular value
+void set_mat_val(mat* matrix, double value){
+  for(int i=0; i < matrix->num_rows; i++){
+    for(int j = 0; j < matrix->num_cols; j++){
+      matrix->values[i][j] = value;
+    }
+  }
+}
+
+//setting the diagonal of a sq matrix to a particular value
+int set_mat_diag(mat* matrix, double value){
+  if(!matrix->is_square){
+    fprintf(stderr, "not a square matrix");
+    return 0;
+  }
+  for(int i = 0; i< matrix->num_rows; i++){
+    matrix->values[i][i] = value;
+  }
+  return 1;
+}
+
+//check if all values in matrix equal a specific value
+int mat_all_equal(mat* matrix, double value, double tolerance){
+  for(int i = 0; i < matrix->num_rows; i++){
+    for(int j = 0; j < matrix->num_cols; j++){
+      if(fabs(matrix->values[i][j] - value) > tolerance){
+        return 0; // Found a value that doesn't match
+      }
+    }
+  }
+  return 1; // All values match
+}

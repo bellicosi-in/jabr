@@ -34,4 +34,11 @@ void mat_printf(mat* matrix, const char* fmt);
 mat* get_col_mat(mat* matrix, unsigned int col);
 mat* get_row_mat(mat* matrix, unsigned int row);
 
+//setting values
+void set_mat_val(mat* matrix, double value);
+int set_mat_diag(mat* matrix, double value);
+
+//checking values
+int mat_all_equal(mat* matrix, double value, double tolerance);
+
 #endif
