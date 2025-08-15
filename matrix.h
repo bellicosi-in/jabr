@@ -22,7 +22,16 @@ mat* eye_mat(unsigned int size);
 mat* read_from_filef(FILE* f);
 
 
+//matrix equality
+int mat_eqdim(mat* m1, mat* m2);
+int mat_equal(mat* m1,  mat* m2, double tolerance);
 
+//print the matrix
+void mat_print(mat* matrix);
+void mat_printf(mat* matrix, const char* fmt);
 
+//retrieving a row/col 
+mat* get_col_mat(mat* matrix, unsigned int col);
+mat* get_row_mat(mat* matrix, unsigned int row);
 
 #endif

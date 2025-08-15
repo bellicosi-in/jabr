@@ -91,3 +91,71 @@ mat* read_from_filef(FILE* f){
   }
   return matrix;
 }
+
+
+//matrix dimension equality
+int mat_eqdim(mat* m1, mat* m2){
+  return (m1->num_rows == m2->num_rows) && (m1->num_cols == m2->num_cols);
+}
+
+//matrix equality
+int mat_equal(mat* m1, mat* m2, double tolerance){
+  if(!mat_eqdim(m1,m2)){
+    return 0;
+  }
+  int i,j;
+  for(i = 0; i < m1->num_rows; i++){
+    for(j = 0; j < m1->num_cols; j++){
+      if(fabs(m1->values[i][j] - m2->values[i][j]) > tolerance){
+        return 0;
+      }
+    }
+  }
+  return 1;
+}
+
+//printing the matrix
+void mat_print(mat* matrix){
+  mat_printf(matrix, "%lf\t\t");
+}
+
+//printing the matrix elements
+void mat_printf(mat* matrix, const char* fmt){
+  int i,j;
+  fprintf(stdout, "\n");
+  for(i = 0; i < matrix->num_rows; i++){
+    for(j = 0; j < matrix->num_cols; j++){
+      fprintf(stdout, fmt, matrix->values[i][j]);
+    }
+    fprintf(stdout, "\n");
+  }
+  fprintf(stdout,"\n");
+}
+
+// retrieving a column
+mat* get_col_mat(mat* matrix, int col){
+  if(col >= matrix->num_cols){
+    fprintf(stderr, "cannot get columns %d", col);
+    exit(75);
+
+  }
+  mat* new_col_matrix = new_mat(matrix->num_rows, 1);
+  for(int j = 0; j< matrix->num_cols; j++){
+    new_col_matrix->values[j][0] = matrix->values[j][col];
+
+  }
+  return new_col_matrix;
+}
+
+//retrieving a row
+mat* get_row_mat(mat* matrix, int row){
+  if(row >= matrix->num_rows){
+    fprintf(stderr, "row cant be fetched %d ",row);
+    exit(75);
+  }
+  mat* new_row_matrix = new_mat(1, matrix->num_cols);
+  //memory is contiguous hence memcpy can be used.
+  memcpy(new_row_matrix->values[0], matrix->values[row], matrix->num_cols * sizeof(*new_row_matrix->values[0]));
+  return new_row_matrix;
+
+}
