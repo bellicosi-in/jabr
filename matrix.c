@@ -1,5 +1,8 @@
 #include "matrix.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <string.h>
 
 #define RAND_MAX 0x7fffffff
 
@@ -20,9 +23,10 @@ mat* new_mat(unsigned int num_rows, unsigned int num_cols){
     m->values[i] = calloc(m->num_cols, sizeof(**m->values)); //allocate the data for the cells/cols
     if(m->values[i] == NULL){
       fprintf(stderr, "null value");
+      exit(1);
     }
-    return m;
   }
+  return m;
 }
 
 //freeing the matrix
@@ -133,14 +137,14 @@ void mat_printf(mat* matrix, const char* fmt){
 }
 
 // retrieving a column
-mat* get_col_mat(mat* matrix, int col){
+mat* get_col_mat(mat* matrix,unsigned int col){
   if(col >= matrix->num_cols){
     fprintf(stderr, "cannot get columns %d", col);
     exit(75);
 
   }
   mat* new_col_matrix = new_mat(matrix->num_rows, 1);
-  for(int j = 0; j< matrix->num_cols; j++){
+  for(int j = 0; j< matrix->num_rows; j++){
     new_col_matrix->values[j][0] = matrix->values[j][col];
 
   }
@@ -148,7 +152,7 @@ mat* get_col_mat(mat* matrix, int col){
 }
 
 //retrieving a row
-mat* get_row_mat(mat* matrix, int row){
+mat* get_row_mat(mat* matrix,unsigned int row){
   if(row >= matrix->num_rows){
     fprintf(stderr, "row cant be fetched %d ",row);
     exit(75);
