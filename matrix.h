@@ -19,6 +19,7 @@ mat* random_mat(unsigned int num_rows, unsigned int num_cols, double min, double
 mat* square_mat(unsigned int size);
 mat* random_square_mat(unsigned int size, double min, double max);
 mat* eye_mat(unsigned int size);
+mat* mat_cp(mat* matrix);
 mat* read_from_filef(FILE* f);
 
 
@@ -40,5 +41,13 @@ int set_mat_diag(mat* matrix, double value);
 
 //checking values
 int mat_all_equal(mat* matrix, double value, double tolerance);
+
+//multiplying a row/column with scalar
+int mat_row_mult_r(mat* matrix, unsigned int row, double num);
+mat* mat_row_mult(mat* matrix, unsigned int row, double num);
+int mat_col_mult_r(mat* matrix, unsigned int col, double num);
+mat* mat_col_mult(mat* matrix, unsigned int col, double num);
+
+
 
 #endif

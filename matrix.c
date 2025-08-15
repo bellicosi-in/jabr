@@ -78,6 +78,17 @@ mat* eye_mat(unsigned int size){
 
 }
 
+//copying a matrix
+mat* mat_cp(mat* matrix){
+  mat* new_matrix = new_mat(matrix->num_rows,matrix->num_cols);
+  for(int i = 0; i < matrix->num_rows; i++){
+    for(int j = 0; j < matrix->num_cols; j++){
+      new_matrix->values[i][j] = matrix -> values[i][j];
+    }
+  }
+  return new_matrix;
+}
+
 //reading from file
 mat* read_from_filef(FILE* f){
   int i,j;
@@ -195,4 +206,49 @@ int mat_all_equal(mat* matrix, double value, double tolerance){
     }
   }
   return 1; // All values match
+}
+
+//multiply a row with scalar
+int mat_row_mult_r(mat* matrix, unsigned int row, double num){
+  if(matrix->num_rows <= row){
+    fprintf(stderr, "row not available");
+    return 0;
+  }
+  for(int i = 0; i < matrix->num_cols; i++){
+    matrix->values[row][i] *= num;
+  }
+  return 1;
+}
+
+mat* mat_row_mult(mat* matrix, unsigned int row, double num){
+  mat* new_matrix = mat_cp(matrix);
+  if(!mat_row_mult_r(new_matrix, row, num)){
+    free_mat(new_matrix);
+    return NULL;
+  }
+  return new_matrix;
+}
+
+
+//multiply a column with a scalar
+int mat_col_mult_r(mat* matrix, unsigned int col, double num){
+  if(matrix->num_cols <= col){
+    fprintf(stderr, "col not present");
+    return 0;
+  }
+  for(int i = 0; i < matrix->num_rows; i++){
+    matrix->values[i][col] *= num;
+  }
+  return 1;
+}
+
+
+mat* mat_col_mult(mat* matrix, unsigned int col, double num){
+  mat* new_matrix = mat_cp(matrix);
+  if(!(mat_col_mult_r(new_matrix, col, num))){
+    free_mat(new_matrix);
+    return NULL;
+  }
+  return new_matrix;
+
 }
