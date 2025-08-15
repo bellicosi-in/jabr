@@ -48,6 +48,14 @@ mat* mat_row_mult(mat* matrix, unsigned int row, double num);
 int mat_col_mult_r(mat* matrix, unsigned int col, double num);
 mat* mat_col_mult(mat* matrix, unsigned int col, double num);
 
+//adding two rows
+int mat_row_addrow_r(mat* matrix, unsigned int where, unsigned int row, double multiplier);
+mat* mat_row_addrow(mat* matrix, unsigned int where, unsigned int row, double multiplier);
+
+//multiplying the matrix with a scalar
+mat* mat_smult(mat* matrix, double num);
+int mat_smult_r(mat* matrix, double num);
+
 
 
 #endif

@@ -252,3 +252,41 @@ mat* mat_col_mult(mat* matrix, unsigned int col, double num){
   return new_matrix;
 
 }
+
+// adding two rows
+int mat_row_addrow_r(mat* matrix, unsigned int where, unsigned int row, double multiplier){
+  if(where >= matrix->num_rows || row >= matrix->num_rows){
+    fprintf(stderr, "cannot add to row");
+    return 0;
+  }
+  int i = 0;
+  for(i = 0; i < matrix->num_cols; i++){
+    matrix->values[where][i] += multiplier * matrix->values[row][i];
+  }
+  return 1;
+}
+
+mat* mat_row_addrow(mat* matrix, unsigned int where, unsigned int row, double multiplier){
+  mat* new_matrix = mat_cp(matrix);
+  if(!mat_row_addrow_r(new_matrix, where, row, multiplier)){
+    free_mat(new_matrix);
+    return NULL;
+  }
+  return new_matrix;
+}
+
+mat* mat_smult(mat* matrix, double num){
+  mat* new_matrix = mat_cp(matrix);
+  mat_smult_r(new_matrix, num);
+  return new_matrix;
+}
+
+int mat_smult_r(mat* matrix, double num){
+  for(int i = 0; i < matrix->num_rows; i++){
+    for(int j = 0; j < matrix->num_cols; j++){
+      matrix->values[i][j] *= num;
+    }
+
+  }
+  return 1;
+}

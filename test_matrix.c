@@ -417,6 +417,112 @@ void test_mat_col_mult() {
     free_mat(multiplied);
 }
 
+void test_mat_row_addrow() {
+    printf("\n--- Testing mat_row_addrow and mat_row_addrow_r ---\n");
+    
+    mat* m = new_mat(3, 3);
+    m->values[0][0] = 1.0; m->values[0][1] = 2.0; m->values[0][2] = 3.0;
+    m->values[1][0] = 4.0; m->values[1][1] = 5.0; m->values[1][2] = 6.0;
+    m->values[2][0] = 7.0; m->values[2][1] = 8.0; m->values[2][2] = 9.0;
+    
+    // Test in-place row addition: row[0] += 2 * row[1]
+    int result = mat_row_addrow_r(m, 0, 1, 2.0);
+    test_assert(result == 1, "mat_row_addrow_r returns 1 for valid rows");
+    
+    // Expected: row[0] = [1,2,3] + 2*[4,5,6] = [9,12,15]
+    test_assert(fabs(m->values[0][0] - 9.0) < EPSILON, "mat_row_addrow_r adds rows correctly");
+    test_assert(fabs(m->values[0][1] - 12.0) < EPSILON, "mat_row_addrow_r adds rows correctly");
+    test_assert(fabs(m->values[0][2] - 15.0) < EPSILON, "mat_row_addrow_r adds rows correctly");
+    
+    // Check source row unchanged
+    test_assert(fabs(m->values[1][0] - 4.0) < EPSILON, "mat_row_addrow_r preserves source row");
+    test_assert(fabs(m->values[1][1] - 5.0) < EPSILON, "mat_row_addrow_r preserves source row");
+    
+    // Check other rows unchanged
+    test_assert(fabs(m->values[2][0] - 7.0) < EPSILON, "mat_row_addrow_r preserves other rows");
+    
+    // Test invalid row indices
+    int result2 = mat_row_addrow_r(m, 5, 1, 2.0);
+    test_assert(result2 == 0, "mat_row_addrow_r returns 0 for invalid where index");
+    
+    int result3 = mat_row_addrow_r(m, 0, 5, 2.0);
+    test_assert(result3 == 0, "mat_row_addrow_r returns 0 for invalid row index");
+    
+    // Test new matrix version
+    mat* original = new_mat(2, 2);
+    original->values[0][0] = 1.0; original->values[0][1] = 2.0;
+    original->values[1][0] = 3.0; original->values[1][1] = 4.0;
+    
+    mat* result_mat = mat_row_addrow(original, 0, 1, 0.5);
+    test_assert(result_mat != NULL, "mat_row_addrow returns non-NULL for valid input");
+    test_assert(result_mat != original, "mat_row_addrow creates new matrix");
+    
+    // Expected: row[0] = [1,2] + 0.5*[3,4] = [2.5,4]
+    test_assert(fabs(result_mat->values[0][0] - 2.5) < EPSILON, "mat_row_addrow adds rows correctly");
+    test_assert(fabs(result_mat->values[0][1] - 4.0) < EPSILON, "mat_row_addrow adds rows correctly");
+    test_assert(fabs(result_mat->values[1][0] - 3.0) < EPSILON, "mat_row_addrow preserves other rows");
+    
+    // Check original unchanged
+    test_assert(fabs(original->values[0][0] - 1.0) < EPSILON, "mat_row_addrow preserves original");
+    
+    // Test invalid input for new matrix version
+    mat* invalid = mat_row_addrow(original, 5, 0, 1.0);
+    test_assert(invalid == NULL, "mat_row_addrow returns NULL for invalid input");
+    
+    free_mat(m);
+    free_mat(original);
+    free_mat(result_mat);
+}
+
+void test_mat_smult() {
+    printf("\n--- Testing mat_smult and mat_smult_r ---\n");
+    
+    mat* m = new_mat(2, 3);
+    m->values[0][0] = 1.0; m->values[0][1] = 2.0; m->values[0][2] = 3.0;
+    m->values[1][0] = 4.0; m->values[1][1] = 5.0; m->values[1][2] = 6.0;
+    
+    // Test in-place scalar multiplication
+    int result = mat_smult_r(m, 2.5);
+    test_assert(result == 1, "mat_smult_r returns 1");
+    
+    test_assert(fabs(m->values[0][0] - 2.5) < EPSILON, "mat_smult_r multiplies all values");
+    test_assert(fabs(m->values[0][1] - 5.0) < EPSILON, "mat_smult_r multiplies all values");
+    test_assert(fabs(m->values[0][2] - 7.5) < EPSILON, "mat_smult_r multiplies all values");
+    test_assert(fabs(m->values[1][0] - 10.0) < EPSILON, "mat_smult_r multiplies all values");
+    test_assert(fabs(m->values[1][1] - 12.5) < EPSILON, "mat_smult_r multiplies all values");
+    test_assert(fabs(m->values[1][2] - 15.0) < EPSILON, "mat_smult_r multiplies all values");
+    
+    // Test with zero
+    mat_smult_r(m, 0.0);
+    test_assert(mat_all_equal(m, 0.0, EPSILON), "mat_smult_r works with zero");
+    
+    // Test new matrix version
+    mat* original = new_mat(2, 2);
+    original->values[0][0] = 2.0; original->values[0][1] = 4.0;
+    original->values[1][0] = 6.0; original->values[1][1] = 8.0;
+    
+    mat* multiplied = mat_smult(original, 0.5);
+    test_assert(multiplied != NULL, "mat_smult returns non-NULL");
+    test_assert(multiplied != original, "mat_smult creates new matrix");
+    
+    test_assert(fabs(multiplied->values[0][0] - 1.0) < EPSILON, "mat_smult multiplies correctly");
+    test_assert(fabs(multiplied->values[0][1] - 2.0) < EPSILON, "mat_smult multiplies correctly");
+    test_assert(fabs(multiplied->values[1][0] - 3.0) < EPSILON, "mat_smult multiplies correctly");
+    test_assert(fabs(multiplied->values[1][1] - 4.0) < EPSILON, "mat_smult multiplies correctly");
+    
+    // Check original unchanged
+    test_assert(fabs(original->values[0][0] - 2.0) < EPSILON, "mat_smult preserves original");
+    
+    // Test with negative multiplier
+    mat* negative = mat_smult(original, -1.0);
+    test_assert(fabs(negative->values[0][0] - (-2.0)) < EPSILON, "mat_smult works with negative values");
+    
+    free_mat(m);
+    free_mat(original);
+    free_mat(multiplied);
+    free_mat(negative);
+}
+
 int main() {
     printf("Running Matrix Library Tests\n");
     printf("============================\n");
@@ -437,6 +543,8 @@ int main() {
     test_mat_cp();
     test_mat_row_mult();
     test_mat_col_mult();
+    test_mat_row_addrow();
+    test_mat_smult();
     
     print_test_summary();
     
