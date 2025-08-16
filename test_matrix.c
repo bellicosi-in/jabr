@@ -1031,6 +1031,199 @@ void test_mat_dot() {
     free_mat(sq_result);
 }
 
+void test_mat_row_add_scaled() {
+    printf("\n--- Testing mat_row_add_scaled ---\n");
+    
+    mat* m = new_mat(3, 3);
+    m->values[0][0] = 1.0; m->values[0][1] = 2.0; m->values[0][2] = 3.0;
+    m->values[1][0] = 4.0; m->values[1][1] = 5.0; m->values[1][2] = 6.0;
+    m->values[2][0] = 7.0; m->values[2][1] = 8.0; m->values[2][2] = 9.0;
+    
+    // Test row[0] += 2.0 * row[1]
+    int result = mat_row_add_scaled(m, 0, 1, 2.0);
+    test_assert(result == 1, "mat_row_add_scaled returns 1 for valid operation");
+    
+    // Expected: row[0] = [1,2,3] + 2.0*[4,5,6] = [9,12,15]
+    test_assert(fabs(m->values[0][0] - 9.0) < EPSILON, "mat_row_add_scaled adds scaled row correctly");
+    test_assert(fabs(m->values[0][1] - 12.0) < EPSILON, "mat_row_add_scaled adds scaled row correctly");
+    test_assert(fabs(m->values[0][2] - 15.0) < EPSILON, "mat_row_add_scaled adds scaled row correctly");
+    
+    // Source row should remain unchanged
+    test_assert(fabs(m->values[1][0] - 4.0) < EPSILON, "mat_row_add_scaled preserves source row");
+    test_assert(fabs(m->values[1][1] - 5.0) < EPSILON, "mat_row_add_scaled preserves source row");
+    test_assert(fabs(m->values[1][2] - 6.0) < EPSILON, "mat_row_add_scaled preserves source row");
+    
+    // Other rows should remain unchanged
+    test_assert(fabs(m->values[2][0] - 7.0) < EPSILON, "mat_row_add_scaled preserves other rows");
+    
+    // Test with negative scalar
+    mat_row_add_scaled(m, 2, 1, -0.5);
+    // row[2] = [7,8,9] + (-0.5)*[4,5,6] = [5,5.5,6]
+    test_assert(fabs(m->values[2][0] - 5.0) < EPSILON, "mat_row_add_scaled works with negative scalar");
+    test_assert(fabs(m->values[2][1] - 5.5) < EPSILON, "mat_row_add_scaled works with negative scalar");
+    test_assert(fabs(m->values[2][2] - 6.0) < EPSILON, "mat_row_add_scaled works with negative scalar");
+    
+    // Test invalid row indices
+    int invalid_result1 = mat_row_add_scaled(m, 5, 1, 1.0);
+    test_assert(invalid_result1 == 0, "mat_row_add_scaled returns 0 for invalid destination row");
+    
+    int invalid_result2 = mat_row_add_scaled(m, 1, 5, 1.0);
+    test_assert(invalid_result2 == 0, "mat_row_add_scaled returns 0 for invalid source row");
+    
+    // Test adding row to itself
+    mat_row_add_scaled(m, 1, 1, 1.0);
+    test_assert(fabs(m->values[1][0] - 8.0) < EPSILON, "mat_row_add_scaled can add row to itself");
+    
+    free_mat(m);
+}
+
+void test_find_pivot_row() {
+    printf("\n--- Testing find_pivot_row ---\n");
+    
+    mat* m = new_mat(4, 3);
+    m->values[0][0] = 0.0; m->values[0][1] = 1.0; m->values[0][2] = 2.0;
+    m->values[1][0] = 0.0; m->values[1][1] = 0.0; m->values[1][2] = 3.0;
+    m->values[2][0] = 4.0; m->values[2][1] = 5.0; m->values[2][2] = 6.0;
+    m->values[3][0] = 0.0; m->values[3][1] = 7.0; m->values[3][2] = 8.0;
+    
+    // Test finding first non-zero in column 0
+    int pivot = find_pivot_row(m, 0, 0);
+    test_assert(pivot == 2, "find_pivot_row finds first non-zero element in column");
+    
+    // Test finding first non-zero in column 1 starting from row 1
+    int pivot2 = find_pivot_row(m, 1, 1);
+    test_assert(pivot2 == 2, "find_pivot_row works with starting row offset");
+    
+    // Test column with all zeros
+    set_mat_val(m, 0.0);
+    int no_pivot = find_pivot_row(m, 0, 0);
+    test_assert(no_pivot == -1, "find_pivot_row returns -1 for column with no pivot");
+    
+    // Test with very small values (should be considered zero)
+    m->values[1][1] = 1e-12; // Smaller than EPSILON
+    int small_pivot = find_pivot_row(m, 1, 0);
+    test_assert(small_pivot == -1, "find_pivot_row ignores values smaller than EPSILON");
+    
+    free_mat(m);
+}
+
+void test_find_max_pivot_row() {
+    printf("\n--- Testing find_max_pivot_row ---\n");
+    
+    mat* m = new_mat(4, 3);
+    m->values[0][0] = 0.1; m->values[0][1] = 1.0; m->values[0][2] = 2.0;
+    m->values[1][0] = 0.5; m->values[1][1] = 0.0; m->values[1][2] = 3.0;
+    m->values[2][0] = -0.8; m->values[2][1] = 5.0; m->values[2][2] = 6.0;
+    m->values[3][0] = 0.3; m->values[3][1] = 7.0; m->values[3][2] = 8.0;
+    
+    // Test finding maximum absolute value in column 0
+    int max_pivot = find_max_pivot_row(m, 0, 0);
+    test_assert(max_pivot == 2, "find_max_pivot_row finds row with maximum absolute value");
+    
+    // Test with starting row offset
+    int max_pivot2 = find_max_pivot_row(m, 0, 1);
+    test_assert(max_pivot2 == 2, "find_max_pivot_row works with starting row offset");
+    
+    // Test starting from row 3
+    int max_pivot3 = find_max_pivot_row(m, 0, 3);
+    test_assert(max_pivot3 == 3, "find_max_pivot_row works when only one row available");
+    
+    // Test column with all small values
+    set_mat_val(m, 1e-12);
+    int no_max = find_max_pivot_row(m, 0, 0);
+    test_assert(no_max == -1, "find_max_pivot_row returns -1 when all values too small");
+    
+    free_mat(m);
+}
+
+void test_mat_to_ref() {
+    printf("\n--- Testing mat_to_ref ---\n");
+    
+    // Test basic 3x3 matrix
+    mat* m = new_mat(3, 3);
+    m->values[0][0] = 2.0; m->values[0][1] = 1.0; m->values[0][2] = 3.0;
+    m->values[1][0] = 4.0; m->values[1][1] = 3.0; m->values[1][2] = 7.0;
+    m->values[2][0] = 6.0; m->values[2][1] = 2.0; m->values[2][2] = 8.0;
+    
+    mat* ref = mat_to_ref(m);
+    test_assert(ref != NULL, "mat_to_ref returns non-NULL");
+    test_assert(ref != m, "mat_to_ref creates new matrix");
+    
+    // Check that original matrix is preserved
+    test_assert(fabs(m->values[0][0] - 2.0) < EPSILON, "mat_to_ref preserves original matrix");
+    
+    // Check that result is in row echelon form (upper triangular structure)
+    test_assert(fabs(ref->values[0][0]) > EPSILON, "mat_to_ref first pivot is non-zero");
+    
+    // Test identity matrix (should remain unchanged)
+    mat* identity = eye_mat(3);
+    mat* ref_identity = mat_to_ref(identity);
+    test_assert(mat_equal(identity, ref_identity, EPSILON), "mat_to_ref of identity gives identity");
+    
+    // Test zero matrix
+    mat* zero_mat = new_mat(2, 2);
+    set_mat_val(zero_mat, 0.0);
+    mat* ref_zero = mat_to_ref(zero_mat);
+    test_assert(mat_all_equal(ref_zero, 0.0, EPSILON), "mat_to_ref of zero matrix gives zero matrix");
+    
+    free_mat(m);
+    free_mat(ref);
+    free_mat(identity);
+    free_mat(ref_identity);
+    free_mat(zero_mat);
+    free_mat(ref_zero);
+}
+
+void test_mat_to_rref() {
+    printf("\n--- Testing mat_to_rref ---\n");
+    
+    // Test basic 2x3 augmented matrix [1 2 | 5; 3 4 | 11]
+    mat* m = new_mat(2, 3);
+    m->values[0][0] = 1.0; m->values[0][1] = 2.0; m->values[0][2] = 5.0;
+    m->values[1][0] = 3.0; m->values[1][1] = 4.0; m->values[1][2] = 11.0;
+    
+    mat* rref = mat_to_rref(m);
+    test_assert(rref != NULL, "mat_to_rref returns non-NULL");
+    test_assert(rref != m, "mat_to_rref creates new matrix");
+    
+    // Check that original matrix is preserved
+    test_assert(fabs(m->values[0][0] - 1.0) < EPSILON, "mat_to_rref preserves original matrix");
+    
+    // Expected RREF: [1 0 | 1; 0 1 | 2] (solution x=1, y=2)
+    test_assert(fabs(rref->values[0][0] - 1.0) < EPSILON, "mat_to_rref produces correct leading 1");
+    test_assert(fabs(rref->values[0][1]) < EPSILON, "mat_to_rref eliminates above pivot");
+    test_assert(fabs(rref->values[1][1] - 1.0) < EPSILON, "mat_to_rref produces correct second leading 1");
+    test_assert(fabs(rref->values[1][0]) < EPSILON, "mat_to_rref eliminates below pivot");
+    
+    // Test identity matrix (should remain unchanged)
+    mat* identity = eye_mat(3);
+    mat* rref_identity = mat_to_rref(identity);
+    test_assert(mat_equal(identity, rref_identity, EPSILON), "mat_to_rref of identity gives identity");
+    
+    // Test singular matrix (should handle gracefully)
+    mat* singular = new_mat(2, 2);
+    singular->values[0][0] = 1.0; singular->values[0][1] = 2.0;
+    singular->values[1][0] = 2.0; singular->values[1][1] = 4.0; // Second row is 2x first row
+    
+    mat* rref_singular = mat_to_rref(singular);
+    test_assert(rref_singular != NULL, "mat_to_rref handles singular matrices");
+    
+    // Test zero matrix
+    mat* zero_mat = new_mat(2, 2);
+    set_mat_val(zero_mat, 0.0);
+    mat* rref_zero = mat_to_rref(zero_mat);
+    test_assert(mat_all_equal(rref_zero, 0.0, EPSILON), "mat_to_rref of zero matrix gives zero matrix");
+    
+    free_mat(m);
+    free_mat(rref);
+    free_mat(identity);
+    free_mat(rref_identity);
+    free_mat(singular);
+    free_mat(rref_singular);
+    free_mat(zero_mat);
+    free_mat(rref_zero);
+}
+
 int main() {
     printf("Running Matrix Library Tests\n");
     printf("============================\n");
@@ -1062,6 +1255,11 @@ int main() {
     test_mat_add();
     test_mat_sub();
     test_mat_dot();
+    test_mat_row_add_scaled();
+    test_find_pivot_row();
+    test_find_max_pivot_row();
+    test_mat_to_ref();
+    test_mat_to_rref();
     
     print_test_summary();
     

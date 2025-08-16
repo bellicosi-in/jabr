@@ -5,6 +5,7 @@
 #include <string.h>
 
 #define RAND_MAX 0x7fffffff
+#define EPSILON 1e-10
 
 //for allocating a new matrix
 mat* new_mat(unsigned int num_rows, unsigned int num_cols){
@@ -474,11 +475,11 @@ mat* mat_vert_cat(unsigned int mnum, mat** marr){
 //ADDING
 int mat_add_r(mat* mat1, mat* mat2){
   if(!mat_eqdim(mat1, mat2)){
-    fprintf(stderr, "not of same dimensions");
+    fprintf(stderr, "not of saem dimensions");
     return 0;
   }
-  for(unsigned int i = 0; i < mat1->num_rows; i++){
-    for(unsigned int j = 0; j < mat1->num_cols; j++){
+  for(int i =0; i < mat1->num_rows; i++){
+    for(int j = 0; j < mat2->num_cols; j++){
       mat1->values[i][j]+= mat2->values[i][j];
     }
   }
@@ -497,11 +498,11 @@ mat* mat_add(mat* mat1, mat* mat2){
 //subtracting
 int mat_sub_r(mat* mat1, mat* mat2){
   if(!mat_eqdim(mat1, mat2)){
-    fprintf(stderr, "not of same dimensions");
+    fprintf(stderr, "not of saem dimensions");
     return 0;
   }
-  for(unsigned int i = 0; i < mat1->num_rows; i++){
-    for(unsigned int j = 0; j < mat1->num_cols; j++){
+  for(int i =0; i < mat1->num_rows; i++){
+    for(int j = 0; j < mat2->num_cols; j++){
       mat1->values[i][j]-= mat2->values[i][j];
     }
   }
@@ -517,19 +518,132 @@ mat* mat_sub(mat* mat1, mat* mat2){
   return new_matrix;
 }
 
+//dot multiplication of two matrices
 mat* mat_dot_r(mat* mat1, mat* mat2){
   if(mat1->num_cols != mat2->num_rows){
-    fprintf(stderr, "cannot multiply.");
+    fprintf(stderr, "cannot muliply. ");
     return NULL;
   }
   
   mat* new_matrix = new_mat(mat1->num_rows, mat2->num_cols);
-  for(unsigned int i = 0; i < new_matrix->num_rows; i++){
-    for(unsigned int j = 0; j < new_matrix->num_cols; j++){
-      for(unsigned int k = 0; k < mat1->num_cols; k++){
+  for(int i = 0; i < new_matrix->num_rows; i++){
+    for(int j = 0; j < new_matrix->num_cols; j++){
+      for(int k = 0; k < mat1->num_cols; k++){
         new_matrix->values [i][j] += mat1->values[i][k] * mat2->values[k][j];
       }
     }
   }
   return new_matrix;
+}
+
+//scalar dot product of a matrix = 
+int mat_row_add_scaled(mat* m, unsigned int row_dest, unsigned int row_src, double scalar){
+  if(row_dest >= m->num_rows || row_src >= m->num_rows){
+    fprintf(stderr, "invalid row indices");
+    return 0;
+  }
+  for(unsigned int j = 0; j < m->num_cols; j++){
+    m->values[row_dest][j] += scalar* m->values[row_src][j];
+  }
+  return 1;
+}
+
+//finding the pivot
+int find_pivot_row(mat* m, unsigned int col, unsigned int starting_row){
+
+  for(unsigned int i = starting_row; i < m->num_rows; i++){
+    if(fabs(m->values[i][col]) > EPSILON){
+      return i;
+    }
+  }
+  return -1;
+}
+
+// find the max pivot
+int find_max_pivot_row(mat* m, unsigned int col, unsigned int starting_row){
+
+  double max_val = 0.0;
+  int max_row = -1;
+
+  for(unsigned int i = starting_row; i < m->num_rows; i++){
+    double abs_val = fabs(m->values[i][col]);
+
+    if(abs_val > max_val){
+      max_val = abs_val;
+      max_row = (int)i;
+    }
+  }
+  if(max_val > EPSILON){
+    return max_row;
+  }
+  return -1;
+}
+
+
+//finding the row echelong form
+mat* mat_to_ref(mat* m){
+  unsigned int current_row = 0;
+  unsigned int current_col = 0;
+  mat* result = mat_cp(m);
+  while(current_row < m->num_rows && current_col < m->num_cols){
+    int pivot_row = find_pivot_row(result,current_col, current_row);
+    if(pivot_row == -1){
+      printf(" Column %u has no pivot", current_col);
+      current_col++;
+      continue;
+    }
+    
+    //swapping rows if necessary
+    if((unsigned int)pivot_row != current_row){
+      mat_row_swap_r(result, current_row, (unsigned int)pivot_row);
+    }
+    for(unsigned int row = current_row + 1; row < result->num_rows; row++){
+
+      if(fabs(result->values[row][current_col]) < EPSILON){
+        continue;
+      }
+
+
+      //calculate the multiplier
+      double multiplier = result->values[row][current_col] / result->values[current_row][current_col];
+      mat_row_add_scaled(result, row, current_row, -multiplier);
+
+    }
+    current_row++;
+    current_col++;
+  }
+  return result;
+}
+
+//finding the reduced row echelon form
+mat* mat_to_rref(mat* m){
+  mat* result = mat_cp(m);
+  unsigned int current_row = 0;
+  unsigned int current_col = 0;
+  while(current_row < result->num_rows && current_col < result->num_cols){
+
+    int pivot_row = find_max_pivot_row(result, current_col, current_row);
+    if(pivot_row == -1){
+      current_col++;
+      continue;
+    }
+
+    if((unsigned int)pivot_row != current_row){
+      mat_row_swap_r(result, current_row, (unsigned int)pivot_row);
+    }
+
+    double pivot_val = result->values[current_row][current_col];
+    mat_row_mult_r(result, current_row, 1.0 / pivot_val);
+
+    for(unsigned int row = 0; row < result->num_rows; row++){
+      if(row == current_row) continue;
+      double val = result->values[row][current_col];
+      if(fabs(val) > EPSILON){
+        mat_row_add_scaled(result, row, current_row, -val);
+      }
+    }
+    current_row++;
+    current_col++;
+  }
+  return result;
 }

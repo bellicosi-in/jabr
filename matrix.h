@@ -80,7 +80,15 @@ mat* mat_add(mat* mat1, mat* mat2);
 int mat_sub_r(mat* mat1, mat* mat2);
 mat* mat_sub(mat* mat1, mat* mat2);
 mat* mat_dot_r(mat* mat1, mat* mat2);
+//adding a multiple of one row to another
+int mat_row_add_scaled(mat* m, unsigned int row_dest, unsigned int row_src, double scalar);
 
+//row echelon form
+int find_pivot_row(mat* m, unsigned int col, unsigned int starting_row);
+int find_max_pivot_row(mat* m, unsigned int col, unsigned int starting_row);
+mat* mat_to_ref(mat* m);
+//reduced row echelon
+mat* mat_to_rref(mat* m);
 
 
 #endif
