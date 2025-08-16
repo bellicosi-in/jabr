@@ -387,3 +387,87 @@ mat* mat_col_swap(mat* matrix, unsigned int col1, unsigned int col2){
   }
   return new_matrix;
 }
+
+//horizontal concatenation
+mat* mat_hor_cat(unsigned int mnum, mat** marr){
+  //Handle edge cases
+  if( mnum == 0) return NULL;
+  if( mnum == 1) return mat_cp(marr[0]);
+
+  //Step 1: Validate and calculate dimensions
+  unsigned int total_rows = marr[0]->num_rows;
+  unsigned int total_cols = 0;
+
+  for(unsigned int k = 0; k < mnum; k++){
+    if(marr[k]==NULL){
+      fprintf(stderr, "Matrix%u is NULL\n", k);
+      return NULL;
+    }
+    if(marr[k]->num_rows != total_rows){
+      fprintf(stderr, "ROW MISMATCH");
+      return NULL;
+    }
+    total_cols += marr[k]->num_cols;
+
+  }
+  mat* new_matrix = new_mat(total_rows, total_cols);
+
+  //copy data from all matrics
+  for(int i = 0; i < total_rows; i++){
+    int current_matrix = 0;
+    int cols_copied = 0; //how many columns we have filled so far
+
+    for(int j =0; j < total_cols; j++){
+      int col_in_current_matrix = j - cols_copied;
+      if(col_in_current_matrix >= marr[current_matrix]->num_cols){
+        cols_copied += marr[current_matrix]->num_cols;
+        current_matrix++;
+        col_in_current_matrix = 0;
+
+      }
+      new_matrix->values[i][j] = marr[current_matrix]->values[i][col_in_current_matrix];
+    }
+  }
+  return new_matrix;
+}
+
+//vertical concatenation
+//TODO REWRITE
+mat* mat_vert_cat(unsigned int mnum, mat** marr){
+  //handle edge case
+  if(mnum == 0) return NULL;
+  if(mnum == 1) return mat_cp(marr[0]);
+
+  //validate and calculate dimensions
+  unsigned int total_rows = 0;
+  unsigned int total_cols = marr[0]->num_cols;
+
+  for(unsigned int k = 0; k < mnum; k++){
+    if(marr[k] == NULL){
+      fprintf(stderr, "matrix is null %u", k);
+      return NULL;
+
+    }
+    if(marr[k]->num_cols != total_cols){
+      fprintf(stderr, "column mismatch");
+      return NULL;
+    }
+    total_rows += marr[k]->num_rows;
+  }
+  //create new matrix
+  mat* new_matrix = new_mat(total_rows, total_cols);
+  int dest_row = 0;
+  for(unsigned int k = 0; k < mnum; k++){
+    for(unsigned int i = 0; i < marr[k]->num_rows; i++){
+      for(unsigned int j = 0; j < total_cols; j++){
+        new_matrix->values[dest_row][j] = marr[k]->values[i][j];
+      }
+      dest_row++;
+    }
+
+  } 
+  return new_matrix;  
+  
+
+
+}

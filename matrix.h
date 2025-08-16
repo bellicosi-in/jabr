@@ -69,5 +69,7 @@ mat* mat_row_swap(mat* matrix, unsigned int row1, unsigned int row2); //returns 
 int mat_col_swap_r(mat* matrix, unsigned int col1, unsigned int col2);
 mat* mat_col_swap(mat* matrix, unsigned int col1, unsigned int col2);
 
-
+//concatenation
+mat* mat_hor_cat(unsigned int mnum, mat** marr);
+mat* mat_vert_cat(unsigned int mnum, mat** marr);
 #endif

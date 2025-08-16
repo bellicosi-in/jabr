@@ -721,6 +721,145 @@ void test_mat_col_swap() {
     free_mat(swapped);
 }
 
+void test_mat_hor_cat() {
+    printf("\n--- Testing mat_hor_cat ---\n");
+    
+    // Test basic horizontal concatenation with 2 matrices
+    mat* m1 = new_mat(2, 2);
+    m1->values[0][0] = 1.0; m1->values[0][1] = 2.0;
+    m1->values[1][0] = 3.0; m1->values[1][1] = 4.0;
+    
+    mat* m2 = new_mat(2, 3);
+    m2->values[0][0] = 5.0; m2->values[0][1] = 6.0; m2->values[0][2] = 7.0;
+    m2->values[1][0] = 8.0; m2->values[1][1] = 9.0; m2->values[1][2] = 10.0;
+    
+    mat* matrices[2] = {m1, m2};
+    mat* result = mat_hor_cat(2, matrices);
+    
+    test_assert(result != NULL, "mat_hor_cat returns non-NULL for valid input");
+    test_assert(result->num_rows == 2, "mat_hor_cat preserves row count");
+    test_assert(result->num_cols == 5, "mat_hor_cat adds column counts");
+    test_assert(result->is_square == 0, "mat_hor_cat updates is_square flag correctly");
+    
+    // Check concatenated values: [1,2,5,6,7], [3,4,8,9,10]
+    test_assert(fabs(result->values[0][0] - 1.0) < EPSILON, "mat_hor_cat copies first matrix correctly");
+    test_assert(fabs(result->values[0][1] - 2.0) < EPSILON, "mat_hor_cat copies first matrix correctly");
+    test_assert(fabs(result->values[0][2] - 5.0) < EPSILON, "mat_hor_cat copies second matrix correctly");
+    test_assert(fabs(result->values[0][3] - 6.0) < EPSILON, "mat_hor_cat copies second matrix correctly");
+    test_assert(fabs(result->values[0][4] - 7.0) < EPSILON, "mat_hor_cat copies second matrix correctly");
+    test_assert(fabs(result->values[1][0] - 3.0) < EPSILON, "mat_hor_cat works across all rows");
+    test_assert(fabs(result->values[1][4] - 10.0) < EPSILON, "mat_hor_cat works across all rows");
+    
+    // Test with 3 matrices
+    mat* m3 = new_mat(2, 1);
+    m3->values[0][0] = 11.0;
+    m3->values[1][0] = 12.0;
+    
+    mat* three_matrices[3] = {m1, m2, m3};
+    mat* result3 = mat_hor_cat(3, three_matrices);
+    test_assert(result3 != NULL, "mat_hor_cat works with 3 matrices");
+    test_assert(result3->num_cols == 6, "mat_hor_cat adds all column counts");
+    test_assert(fabs(result3->values[0][5] - 11.0) < EPSILON, "mat_hor_cat concatenates third matrix");
+    
+    // Test edge case: single matrix
+    mat* single[1] = {m1};
+    mat* single_result = mat_hor_cat(1, single);
+    test_assert(single_result != NULL, "mat_hor_cat works with single matrix");
+    test_assert(mat_equal(single_result, m1, EPSILON), "mat_hor_cat returns copy of single matrix");
+    
+    // Test edge case: zero matrices
+    mat* zero_result = mat_hor_cat(0, NULL);
+    test_assert(zero_result == NULL, "mat_hor_cat returns NULL for zero matrices");
+    
+    // Test error case: row mismatch
+    mat* wrong_rows = new_mat(3, 2);
+    mat* mismatch[2] = {m1, wrong_rows};
+    mat* error_result = mat_hor_cat(2, mismatch);
+    test_assert(error_result == NULL, "mat_hor_cat returns NULL for row mismatch");
+    
+    // Test error case: NULL matrix
+    mat* null_matrices[2] = {m1, NULL};
+    mat* null_result = mat_hor_cat(2, null_matrices);
+    test_assert(null_result == NULL, "mat_hor_cat returns NULL for NULL matrix");
+    
+    free_mat(m1);
+    free_mat(m2);
+    free_mat(m3);
+    free_mat(wrong_rows);
+    free_mat(result);
+    free_mat(result3);
+    free_mat(single_result);
+}
+
+void test_mat_vert_cat() {
+    printf("\n--- Testing mat_vert_cat ---\n");
+    
+    // Test basic vertical concatenation with 2 matrices
+    mat* m1 = new_mat(2, 3);
+    m1->values[0][0] = 1.0; m1->values[0][1] = 2.0; m1->values[0][2] = 3.0;
+    m1->values[1][0] = 4.0; m1->values[1][1] = 5.0; m1->values[1][2] = 6.0;
+    
+    mat* m2 = new_mat(1, 3);
+    m2->values[0][0] = 7.0; m2->values[0][1] = 8.0; m2->values[0][2] = 9.0;
+    
+    mat* matrices[2] = {m1, m2};
+    mat* result = mat_vert_cat(2, matrices);
+    
+    test_assert(result != NULL, "mat_vert_cat returns non-NULL for valid input");
+    test_assert(result->num_rows == 3, "mat_vert_cat adds row counts");
+    test_assert(result->num_cols == 3, "mat_vert_cat preserves column count");
+    test_assert(result->is_square == 1, "mat_vert_cat updates is_square flag correctly");
+    
+    // Check concatenated values: first matrix rows, then second matrix rows
+    test_assert(fabs(result->values[0][0] - 1.0) < EPSILON, "mat_vert_cat copies first matrix correctly");
+    test_assert(fabs(result->values[0][2] - 3.0) < EPSILON, "mat_vert_cat copies first matrix correctly");
+    test_assert(fabs(result->values[1][0] - 4.0) < EPSILON, "mat_vert_cat copies first matrix correctly");
+    test_assert(fabs(result->values[1][2] - 6.0) < EPSILON, "mat_vert_cat copies first matrix correctly");
+    test_assert(fabs(result->values[2][0] - 7.0) < EPSILON, "mat_vert_cat copies second matrix correctly");
+    test_assert(fabs(result->values[2][2] - 9.0) < EPSILON, "mat_vert_cat copies second matrix correctly");
+    
+    // Test with 3 matrices
+    mat* m3 = new_mat(2, 3);
+    m3->values[0][0] = 10.0; m3->values[0][1] = 11.0; m3->values[0][2] = 12.0;
+    m3->values[1][0] = 13.0; m3->values[1][1] = 14.0; m3->values[1][2] = 15.0;
+    
+    mat* three_matrices[3] = {m1, m2, m3};
+    mat* result3 = mat_vert_cat(3, three_matrices);
+    test_assert(result3 != NULL, "mat_vert_cat works with 3 matrices");
+    test_assert(result3->num_rows == 5, "mat_vert_cat adds all row counts");
+    test_assert(fabs(result3->values[3][0] - 10.0) < EPSILON, "mat_vert_cat concatenates third matrix");
+    test_assert(fabs(result3->values[4][2] - 15.0) < EPSILON, "mat_vert_cat concatenates third matrix");
+    
+    // Test edge case: single matrix
+    mat* single[1] = {m1};
+    mat* single_result = mat_vert_cat(1, single);
+    test_assert(single_result != NULL, "mat_vert_cat works with single matrix");
+    test_assert(mat_equal(single_result, m1, EPSILON), "mat_vert_cat returns copy of single matrix");
+    
+    // Test edge case: zero matrices
+    mat* zero_result = mat_vert_cat(0, NULL);
+    test_assert(zero_result == NULL, "mat_vert_cat returns NULL for zero matrices");
+    
+    // Test error case: column mismatch
+    mat* wrong_cols = new_mat(1, 2);
+    mat* mismatch[2] = {m1, wrong_cols};
+    mat* error_result = mat_vert_cat(2, mismatch);
+    test_assert(error_result == NULL, "mat_vert_cat returns NULL for column mismatch");
+    
+    // Test error case: NULL matrix
+    mat* null_matrices[2] = {m1, NULL};
+    mat* null_result = mat_vert_cat(2, null_matrices);
+    test_assert(null_result == NULL, "mat_vert_cat returns NULL for NULL matrix");
+    
+    free_mat(m1);
+    free_mat(m2);
+    free_mat(m3);
+    free_mat(wrong_cols);
+    free_mat(result);
+    free_mat(result3);
+    free_mat(single_result);
+}
+
 int main() {
     printf("Running Matrix Library Tests\n");
     printf("============================\n");
@@ -747,6 +886,8 @@ int main() {
     test_mat_remove_row();
     test_mat_row_swap();
     test_mat_col_swap();
+    test_mat_hor_cat();
+    test_mat_vert_cat();
     
     print_test_summary();
     
