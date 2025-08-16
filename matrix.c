@@ -468,6 +468,68 @@ mat* mat_vert_cat(unsigned int mnum, mat** marr){
   } 
   return new_matrix;  
   
+}
 
 
+//ADDING
+int mat_add_r(mat* mat1, mat* mat2){
+  if(!mat_eqdim(mat1, mat2)){
+    fprintf(stderr, "not of same dimensions");
+    return 0;
+  }
+  for(unsigned int i = 0; i < mat1->num_rows; i++){
+    for(unsigned int j = 0; j < mat1->num_cols; j++){
+      mat1->values[i][j]+= mat2->values[i][j];
+    }
+  }
+  return 1;
+}
+
+mat* mat_add(mat* mat1, mat* mat2){
+  mat* new_matrix = mat_cp(mat1);
+  if(!mat_add_r(new_matrix, mat2)){
+    free_mat(new_matrix);
+    return NULL;
+  }
+  return new_matrix;
+}
+
+//subtracting
+int mat_sub_r(mat* mat1, mat* mat2){
+  if(!mat_eqdim(mat1, mat2)){
+    fprintf(stderr, "not of same dimensions");
+    return 0;
+  }
+  for(unsigned int i = 0; i < mat1->num_rows; i++){
+    for(unsigned int j = 0; j < mat1->num_cols; j++){
+      mat1->values[i][j]-= mat2->values[i][j];
+    }
+  }
+  return 1;
+}
+
+mat* mat_sub(mat* mat1, mat* mat2){
+  mat* new_matrix = mat_cp(mat1);
+  if(!mat_sub_r(new_matrix, mat2)){
+    free_mat(new_matrix);
+    return NULL;
+  }
+  return new_matrix;
+}
+
+mat* mat_dot_r(mat* mat1, mat* mat2){
+  if(mat1->num_cols != mat2->num_rows){
+    fprintf(stderr, "cannot multiply.");
+    return NULL;
+  }
+  
+  mat* new_matrix = new_mat(mat1->num_rows, mat2->num_cols);
+  for(unsigned int i = 0; i < new_matrix->num_rows; i++){
+    for(unsigned int j = 0; j < new_matrix->num_cols; j++){
+      for(unsigned int k = 0; k < mat1->num_cols; k++){
+        new_matrix->values [i][j] += mat1->values[i][k] * mat2->values[k][j];
+      }
+    }
+  }
+  return new_matrix;
 }

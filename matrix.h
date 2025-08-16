@@ -72,4 +72,15 @@ mat* mat_col_swap(mat* matrix, unsigned int col1, unsigned int col2);
 //concatenation
 mat* mat_hor_cat(unsigned int mnum, mat** marr);
 mat* mat_vert_cat(unsigned int mnum, mat** marr);
+
+
+//basic matric ops
+int mat_add_r(mat* mat1, mat* mat2);
+mat* mat_add(mat* mat1, mat* mat2);
+int mat_sub_r(mat* mat1, mat* mat2);
+mat* mat_sub(mat* mat1, mat* mat2);
+mat* mat_dot_r(mat* mat1, mat* mat2);
+
+
+
 #endif

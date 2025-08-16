@@ -860,6 +860,177 @@ void test_mat_vert_cat() {
     free_mat(single_result);
 }
 
+void test_mat_add() {
+    printf("\n--- Testing mat_add and mat_add_r ---\n");
+    
+    // Test basic matrix addition
+    mat* m1 = new_mat(2, 3);
+    m1->values[0][0] = 1.0; m1->values[0][1] = 2.0; m1->values[0][2] = 3.0;
+    m1->values[1][0] = 4.0; m1->values[1][1] = 5.0; m1->values[1][2] = 6.0;
+    
+    mat* m2 = new_mat(2, 3);
+    m2->values[0][0] = 7.0; m2->values[0][1] = 8.0; m2->values[0][2] = 9.0;
+    m2->values[1][0] = 10.0; m2->values[1][1] = 11.0; m2->values[1][2] = 12.0;
+    
+    // Test in-place addition
+    mat* m1_copy = mat_cp(m1);
+    int result = mat_add_r(m1_copy, m2);
+    test_assert(result == 1, "mat_add_r returns 1 for valid matrices");
+    
+    // Check results: [1+7, 2+8, 3+9], [4+10, 5+11, 6+12] = [8, 10, 12], [14, 16, 18]
+    test_assert(fabs(m1_copy->values[0][0] - 8.0) < EPSILON, "mat_add_r adds correctly");
+    test_assert(fabs(m1_copy->values[0][1] - 10.0) < EPSILON, "mat_add_r adds correctly");
+    test_assert(fabs(m1_copy->values[0][2] - 12.0) < EPSILON, "mat_add_r adds correctly");
+    test_assert(fabs(m1_copy->values[1][0] - 14.0) < EPSILON, "mat_add_r adds correctly");
+    test_assert(fabs(m1_copy->values[1][1] - 16.0) < EPSILON, "mat_add_r adds correctly");
+    test_assert(fabs(m1_copy->values[1][2] - 18.0) < EPSILON, "mat_add_r adds correctly");
+    
+    // Test new matrix addition
+    mat* result_mat = mat_add(m1, m2);
+    test_assert(result_mat != NULL, "mat_add returns non-NULL for valid matrices");
+    test_assert(result_mat != m1, "mat_add creates new matrix");
+    test_assert(mat_equal(result_mat, m1_copy, EPSILON), "mat_add produces same result as mat_add_r");
+    test_assert(fabs(m1->values[0][0] - 1.0) < EPSILON, "mat_add preserves original matrix");
+    
+    // Test dimension mismatch
+    mat* wrong_dim = new_mat(3, 2);
+    int error_result = mat_add_r(m1, wrong_dim);
+    test_assert(error_result == 0, "mat_add_r returns 0 for dimension mismatch");
+    
+    mat* error_mat = mat_add(m1, wrong_dim);
+    test_assert(error_mat == NULL, "mat_add returns NULL for dimension mismatch");
+    
+    // Test with negative numbers
+    mat* neg = new_mat(2, 3);
+    set_mat_val(neg, -1.0);
+    mat* neg_result = mat_add(m1, neg);
+    test_assert(fabs(neg_result->values[0][0] - 0.0) < EPSILON, "mat_add works with negative numbers");
+    test_assert(fabs(neg_result->values[1][1] - 4.0) < EPSILON, "mat_add works with negative numbers");
+    
+    free_mat(m1);
+    free_mat(m2);
+    free_mat(m1_copy);
+    free_mat(result_mat);
+    free_mat(wrong_dim);
+    free_mat(neg);
+    free_mat(neg_result);
+}
+
+void test_mat_sub() {
+    printf("\n--- Testing mat_sub and mat_sub_r ---\n");
+    
+    // Test basic matrix subtraction
+    mat* m1 = new_mat(2, 2);
+    m1->values[0][0] = 10.0; m1->values[0][1] = 8.0;
+    m1->values[1][0] = 6.0; m1->values[1][1] = 4.0;
+    
+    mat* m2 = new_mat(2, 2);
+    m2->values[0][0] = 3.0; m2->values[0][1] = 2.0;
+    m2->values[1][0] = 1.0; m2->values[1][1] = 0.0;
+    
+    // Test in-place subtraction
+    mat* m1_copy = mat_cp(m1);
+    int result = mat_sub_r(m1_copy, m2);
+    test_assert(result == 1, "mat_sub_r returns 1 for valid matrices");
+    
+    // Check results: [10-3, 8-2], [6-1, 4-0] = [7, 6], [5, 4]
+    test_assert(fabs(m1_copy->values[0][0] - 7.0) < EPSILON, "mat_sub_r subtracts correctly");
+    test_assert(fabs(m1_copy->values[0][1] - 6.0) < EPSILON, "mat_sub_r subtracts correctly");
+    test_assert(fabs(m1_copy->values[1][0] - 5.0) < EPSILON, "mat_sub_r subtracts correctly");
+    test_assert(fabs(m1_copy->values[1][1] - 4.0) < EPSILON, "mat_sub_r subtracts correctly");
+    
+    // Test new matrix subtraction
+    mat* result_mat = mat_sub(m1, m2);
+    test_assert(result_mat != NULL, "mat_sub returns non-NULL for valid matrices");
+    test_assert(result_mat != m1, "mat_sub creates new matrix");
+    test_assert(mat_equal(result_mat, m1_copy, EPSILON), "mat_sub produces same result as mat_sub_r");
+    test_assert(fabs(m1->values[0][0] - 10.0) < EPSILON, "mat_sub preserves original matrix");
+    
+    // Test dimension mismatch
+    mat* wrong_dim = new_mat(1, 3);
+    int error_result = mat_sub_r(m1, wrong_dim);
+    test_assert(error_result == 0, "mat_sub_r returns 0 for dimension mismatch");
+    
+    mat* error_mat = mat_sub(m1, wrong_dim);
+    test_assert(error_mat == NULL, "mat_sub returns NULL for dimension mismatch");
+    
+    // Test subtracting matrix from itself (should give zero matrix)
+    mat* zero_result = mat_sub(m1, m1);
+    test_assert(mat_all_equal(zero_result, 0.0, EPSILON), "mat_sub matrix from itself gives zero matrix");
+    
+    free_mat(m1);
+    free_mat(m2);
+    free_mat(m1_copy);
+    free_mat(result_mat);
+    free_mat(wrong_dim);
+    free_mat(zero_result);
+}
+
+void test_mat_dot() {
+    printf("\n--- Testing mat_dot_r ---\n");
+    
+    // Test basic 2x3 * 3x2 matrix multiplication
+    mat* m1 = new_mat(2, 3);
+    m1->values[0][0] = 1.0; m1->values[0][1] = 2.0; m1->values[0][2] = 3.0;
+    m1->values[1][0] = 4.0; m1->values[1][1] = 5.0; m1->values[1][2] = 6.0;
+    
+    mat* m2 = new_mat(3, 2);
+    m2->values[0][0] = 7.0; m2->values[0][1] = 8.0;
+    m2->values[1][0] = 9.0; m2->values[1][1] = 10.0;
+    m2->values[2][0] = 11.0; m2->values[2][1] = 12.0;
+    
+    mat* result = mat_dot_r(m1, m2);
+    test_assert(result != NULL, "mat_dot_r returns non-NULL for valid matrices");
+    test_assert(result->num_rows == 2, "mat_dot_r produces correct result dimensions");
+    test_assert(result->num_cols == 2, "mat_dot_r produces correct result dimensions");
+    test_assert(result->is_square == 1, "mat_dot_r updates is_square flag correctly");
+    
+    // Check results: 
+    // [1*7+2*9+3*11, 1*8+2*10+3*12] = [58, 64]
+    // [4*7+5*9+6*11, 4*8+5*10+6*12] = [139, 154]
+    test_assert(fabs(result->values[0][0] - 58.0) < EPSILON, "mat_dot_r multiplies correctly");
+    test_assert(fabs(result->values[0][1] - 64.0) < EPSILON, "mat_dot_r multiplies correctly");
+    test_assert(fabs(result->values[1][0] - 139.0) < EPSILON, "mat_dot_r multiplies correctly");
+    test_assert(fabs(result->values[1][1] - 154.0) < EPSILON, "mat_dot_r multiplies correctly");
+    
+    // Test identity matrix multiplication
+    mat* identity = eye_mat(3);
+    mat* id_result = mat_dot_r(m1, identity);
+    test_assert(mat_equal(id_result, m1, EPSILON), "mat_dot_r with identity gives original matrix");
+    
+    // Test dimension mismatch (2x3 * 2x2 should fail)
+    mat* wrong_dim = new_mat(2, 2);
+    mat* error_result = mat_dot_r(m1, wrong_dim);
+    test_assert(error_result == NULL, "mat_dot_r returns NULL for dimension mismatch");
+    
+    // Test square matrix multiplication
+    mat* sq1 = new_mat(2, 2);
+    sq1->values[0][0] = 1.0; sq1->values[0][1] = 2.0;
+    sq1->values[1][0] = 3.0; sq1->values[1][1] = 4.0;
+    
+    mat* sq2 = new_mat(2, 2);
+    sq2->values[0][0] = 5.0; sq2->values[0][1] = 6.0;
+    sq2->values[1][0] = 7.0; sq2->values[1][1] = 8.0;
+    
+    mat* sq_result = mat_dot_r(sq1, sq2);
+    // [1*5+2*7, 1*6+2*8] = [19, 22]
+    // [3*5+4*7, 3*6+4*8] = [43, 50]
+    test_assert(fabs(sq_result->values[0][0] - 19.0) < EPSILON, "mat_dot_r works with square matrices");
+    test_assert(fabs(sq_result->values[0][1] - 22.0) < EPSILON, "mat_dot_r works with square matrices");
+    test_assert(fabs(sq_result->values[1][0] - 43.0) < EPSILON, "mat_dot_r works with square matrices");
+    test_assert(fabs(sq_result->values[1][1] - 50.0) < EPSILON, "mat_dot_r works with square matrices");
+    
+    free_mat(m1);
+    free_mat(m2);
+    free_mat(result);
+    free_mat(identity);
+    free_mat(id_result);
+    free_mat(wrong_dim);
+    free_mat(sq1);
+    free_mat(sq2);
+    free_mat(sq_result);
+}
+
 int main() {
     printf("Running Matrix Library Tests\n");
     printf("============================\n");
@@ -888,6 +1059,9 @@ int main() {
     test_mat_col_swap();
     test_mat_hor_cat();
     test_mat_vert_cat();
+    test_mat_add();
+    test_mat_sub();
+    test_mat_dot();
     
     print_test_summary();
     
