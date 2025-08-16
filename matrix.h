@@ -90,5 +90,14 @@ mat* mat_to_ref(mat* m);
 //reduced row echelon
 mat* mat_to_rref(mat* m);
 
+//LUP decomposition
+int mat_lup_decomp(mat* A, mat** L, mat** U, mat** P);
+mat* mat_lup_solve(mat* L, mat* U, mat* P, mat* b);
+double mat_det_lup(mat* L, mat* U, mat* P);
+
+//QR decomposition
+int mat_qr_decomp(mat* A, mat** Q, mat** R);
+mat* mat_qr_solve(mat* Q, mat* R, mat* b);
+mat* mat_transpose(mat* matrix);
 
 #endif

@@ -1224,6 +1224,395 @@ void test_mat_to_rref() {
     free_mat(rref_zero);
 }
 
+void test_mat_lup_decomp() {
+    printf("\n--- Testing mat_lup_decomp ---\n");
+    
+    // Test basic 3x3 matrix decomposition
+    mat* A = new_mat(3, 3);
+    A->values[0][0] = 2.0; A->values[0][1] = 1.0; A->values[0][2] = 1.0;
+    A->values[1][0] = 4.0; A->values[1][1] = 3.0; A->values[1][2] = 3.0;
+    A->values[2][0] = 8.0; A->values[2][1] = 7.0; A->values[2][2] = 9.0;
+    
+    mat* L = NULL;
+    mat* U = NULL;
+    mat* P = NULL;
+    
+    int result = mat_lup_decomp(A, &L, &U, &P);
+    test_assert(result == 1, "mat_lup_decomp returns 1 for success");
+    test_assert(L != NULL, "mat_lup_decomp creates L matrix");
+    test_assert(U != NULL, "mat_lup_decomp creates U matrix");
+    test_assert(P != NULL, "mat_lup_decomp creates P matrix");
+    
+    // Verify matrix dimensions
+    test_assert(L->num_rows == 3 && L->num_cols == 3, "L matrix has correct dimensions");
+    test_assert(U->num_rows == 3 && U->num_cols == 3, "U matrix has correct dimensions");
+    test_assert(P->num_rows == 3 && P->num_cols == 3, "P matrix has correct dimensions");
+    
+    // Verify L is lower triangular (upper entries should be 0)
+    test_assert(fabs(L->values[0][1]) < EPSILON, "L is lower triangular");
+    test_assert(fabs(L->values[0][2]) < EPSILON, "L is lower triangular");
+    test_assert(fabs(L->values[1][2]) < EPSILON, "L is lower triangular");
+    
+    // Verify L has 1s on diagonal
+    test_assert(fabs(L->values[0][0] - 1.0) < EPSILON, "L has 1s on diagonal");
+    test_assert(fabs(L->values[1][1] - 1.0) < EPSILON, "L has 1s on diagonal");
+    test_assert(fabs(L->values[2][2] - 1.0) < EPSILON, "L has 1s on diagonal");
+    
+    // Verify U is upper triangular (lower entries should be 0)
+    test_assert(fabs(U->values[1][0]) < EPSILON, "U is upper triangular");
+    test_assert(fabs(U->values[2][0]) < EPSILON, "U is upper triangular");
+    test_assert(fabs(U->values[2][1]) < EPSILON, "U is upper triangular");
+    
+    // Verify P is a permutation matrix (each row and column has exactly one 1)
+    for (unsigned int i = 0; i < 3; i++) {
+        int row_sum = 0;
+        int col_sum = 0;
+        for (unsigned int j = 0; j < 3; j++) {
+            if (fabs(P->values[i][j] - 1.0) < EPSILON) row_sum++;
+            if (fabs(P->values[j][i] - 1.0) < EPSILON) col_sum++;
+        }
+        test_assert(row_sum == 1, "P matrix each row has exactly one 1");
+        test_assert(col_sum == 1, "P matrix each column has exactly one 1");
+    }
+    
+    // Verify PA = LU by computing P*A and L*U and checking equality
+    mat* PA = mat_dot_r(P, A);
+    mat* LU = mat_dot_r(L, U);
+    test_assert(mat_equal(PA, LU, EPSILON), "LUP decomposition satisfies PA = LU");
+    
+    // Test with non-square matrix (should fail)
+    mat* nonsquare = new_mat(2, 3);
+    mat* L2 = NULL, * U2 = NULL, * P2 = NULL;
+    int result2 = mat_lup_decomp(nonsquare, &L2, &U2, &P2);
+    test_assert(result2 == 0, "mat_lup_decomp returns 0 for non-square matrix");
+    
+    free_mat(A);
+    free_mat(L);
+    free_mat(U);
+    free_mat(P);
+    free_mat(PA);
+    free_mat(LU);
+    free_mat(nonsquare);
+}
+
+void test_mat_lup_solve() {
+    printf("\n--- Testing mat_lup_solve ---\n");
+    
+    // Test known system: 2x + y = 5, 4x + 3y = 11 (solution: x=1, y=3)
+    mat* A = new_mat(2, 2);
+    A->values[0][0] = 2.0; A->values[0][1] = 1.0;
+    A->values[1][0] = 4.0; A->values[1][1] = 3.0;
+    
+    mat* b = new_mat(2, 1);
+    b->values[0][0] = 5.0;
+    b->values[1][0] = 11.0;
+    
+    // Decompose A
+    mat* L = NULL;
+    mat* U = NULL;
+    mat* P = NULL;
+    mat_lup_decomp(A, &L, &U, &P);
+    
+    // Solve the system
+    mat* x = mat_lup_solve(L, U, P, b);
+    test_assert(x != NULL, "mat_lup_solve returns non-NULL for valid system");
+    
+    // Check solution (should be x=1, y=3)
+    test_assert(fabs(x->values[0][0] - 1.0) < EPSILON, "mat_lup_solve finds correct solution x");
+    test_assert(fabs(x->values[1][0] - 3.0) < EPSILON, "mat_lup_solve finds correct solution y");
+    
+    // Verify solution by substituting back: Ax should equal b
+    mat* Ax = mat_dot_r(A, x);
+    test_assert(mat_equal(Ax, b, EPSILON), "LUP solution satisfies Ax = b");
+    
+    // Test 3x3 system
+    mat* A3 = new_mat(3, 3);
+    A3->values[0][0] = 1.0; A3->values[0][1] = 2.0; A3->values[0][2] = 3.0;
+    A3->values[1][0] = 2.0; A3->values[1][1] = 5.0; A3->values[1][2] = 3.0;
+    A3->values[2][0] = 1.0; A3->values[2][1] = 0.0; A3->values[2][2] = 8.0;
+    
+    mat* b3 = new_mat(3, 1);
+    b3->values[0][0] = 14.0;
+    b3->values[1][0] = 18.0; 
+    b3->values[2][0] = 17.0;
+    // Solution should be x=1, y=2, z=3
+    
+    mat* L3 = NULL, * U3 = NULL, * P3 = NULL;
+    mat_lup_decomp(A3, &L3, &U3, &P3);
+    mat* x3 = mat_lup_solve(L3, U3, P3, b3);
+    
+    test_assert(x3 != NULL, "mat_lup_solve works for 3x3 system");
+    test_assert(fabs(x3->values[0][0] - 1.0) < EPSILON, "3x3 system solution x correct");
+    test_assert(fabs(x3->values[1][0] - 2.0) < EPSILON, "3x3 system solution y correct");
+    test_assert(fabs(x3->values[2][0] - 3.0) < EPSILON, "3x3 system solution z correct");
+    
+    // Test error cases
+    mat* invalid = mat_lup_solve(NULL, U, P, b);
+    test_assert(invalid == NULL, "mat_lup_solve returns NULL for invalid input");
+    
+    free_mat(A);
+    free_mat(b);
+    free_mat(L);
+    free_mat(U);
+    free_mat(P);
+    free_mat(x);
+    free_mat(Ax);
+    free_mat(A3);
+    free_mat(b3);
+    free_mat(L3);
+    free_mat(U3);
+    free_mat(P3);
+    free_mat(x3);
+}
+
+void test_mat_det_lup() {
+    printf("\n--- Testing mat_det_lup ---\n");
+    
+    // Test determinant of known matrix
+    mat* A = new_mat(2, 2);
+    A->values[0][0] = 3.0; A->values[0][1] = 2.0;
+    A->values[1][0] = 1.0; A->values[1][1] = 4.0;
+    // det(A) = 3*4 - 2*1 = 10
+    
+    mat* L = NULL;
+    mat* U = NULL;
+    mat* P = NULL;
+    mat_lup_decomp(A, &L, &U, &P);
+    
+    double det = mat_det_lup(L, U, P);
+    test_assert(fabs(det - 10.0) < EPSILON, "mat_det_lup computes correct determinant for 2x2");
+    
+    // Test 3x3 matrix
+    mat* A3 = new_mat(3, 3);
+    A3->values[0][0] = 1.0; A3->values[0][1] = 2.0; A3->values[0][2] = 3.0;
+    A3->values[1][0] = 0.0; A3->values[1][1] = 1.0; A3->values[1][2] = 4.0;
+    A3->values[2][0] = 5.0; A3->values[2][1] = 6.0; A3->values[2][2] = 0.0;
+    // det(A3) = 1*(1*0 - 4*6) - 2*(0*0 - 4*5) + 3*(0*6 - 1*5) = -24 + 40 - 15 = 1
+    
+    mat* L3 = NULL, * U3 = NULL, * P3 = NULL;
+    mat_lup_decomp(A3, &L3, &U3, &P3);
+    double det3 = mat_det_lup(L3, U3, P3);
+    test_assert(fabs(det3 - 1.0) < EPSILON, "mat_det_lup computes correct determinant for 3x3");
+    
+    // Test identity matrix (det should be 1)
+    mat* identity = eye_mat(3);
+    mat* LI = NULL, * UI = NULL, * PI = NULL;
+    mat_lup_decomp(identity, &LI, &UI, &PI);
+    double det_identity = mat_det_lup(LI, UI, PI);
+    test_assert(fabs(det_identity - 1.0) < EPSILON, "mat_det_lup gives 1 for identity matrix");
+    
+    // Test singular matrix (det should be 0)
+    mat* singular = new_mat(2, 2);
+    singular->values[0][0] = 1.0; singular->values[0][1] = 2.0;
+    singular->values[1][0] = 2.0; singular->values[1][1] = 4.0; // Second row = 2 * first row
+    
+    mat* LS = NULL, * US = NULL, * PS = NULL;
+    mat_lup_decomp(singular, &LS, &US, &PS);
+    double det_singular = mat_det_lup(LS, US, PS);
+    test_assert(fabs(det_singular) < EPSILON, "mat_det_lup gives 0 for singular matrix");
+    
+    free_mat(A);
+    free_mat(L);
+    free_mat(U);
+    free_mat(P);
+    free_mat(A3);
+    free_mat(L3);
+    free_mat(U3);
+    free_mat(P3);
+    free_mat(identity);
+    free_mat(LI);
+    free_mat(UI);
+    free_mat(PI);
+    free_mat(singular);
+    free_mat(LS);
+    free_mat(US);
+    free_mat(PS);
+}
+
+void test_mat_transpose() {
+    printf("\n--- Testing mat_transpose ---\n");
+    
+    // Test basic transpose
+    mat* A = new_mat(2, 3);
+    A->values[0][0] = 1.0; A->values[0][1] = 2.0; A->values[0][2] = 3.0;
+    A->values[1][0] = 4.0; A->values[1][1] = 5.0; A->values[1][2] = 6.0;
+    
+    mat* At = mat_transpose(A);
+    test_assert(At != NULL, "mat_transpose returns non-NULL");
+    test_assert(At->num_rows == 3, "transposed matrix has correct rows");
+    test_assert(At->num_cols == 2, "transposed matrix has correct cols");
+    test_assert(fabs(At->values[0][0] - 1.0) < EPSILON, "transpose element [0][0] correct");
+    test_assert(fabs(At->values[1][0] - 2.0) < EPSILON, "transpose element [1][0] correct");
+    test_assert(fabs(At->values[2][0] - 3.0) < EPSILON, "transpose element [2][0] correct");
+    test_assert(fabs(At->values[0][1] - 4.0) < EPSILON, "transpose element [0][1] correct");
+    test_assert(fabs(At->values[1][1] - 5.0) < EPSILON, "transpose element [1][1] correct");
+    test_assert(fabs(At->values[2][1] - 6.0) < EPSILON, "transpose element [2][1] correct");
+    
+    // Test transpose of transpose gives original
+    mat* Att = mat_transpose(At);
+    test_assert(mat_equal(A, Att, EPSILON), "transpose of transpose gives original");
+    
+    // Test square matrix transpose
+    mat* B = eye_mat(3);
+    mat* Bt = mat_transpose(B);
+    test_assert(mat_equal(B, Bt, EPSILON), "transpose of identity is identity");
+    
+    free_mat(A);
+    free_mat(At);
+    free_mat(Att);
+    free_mat(B);
+    free_mat(Bt);
+}
+
+void test_mat_qr_decomp() {
+    printf("\n--- Testing mat_qr_decomp ---\n");
+    
+    // Test basic 3x2 QR decomposition
+    mat* A = new_mat(3, 2);
+    A->values[0][0] = 1.0; A->values[0][1] = 1.0;
+    A->values[1][0] = 1.0; A->values[1][1] = 2.0;
+    A->values[2][0] = 1.0; A->values[2][1] = 3.0;
+    
+    mat* Q = NULL, * R = NULL;
+    int result = mat_qr_decomp(A, &Q, &R);
+    
+    test_assert(result == 1, "mat_qr_decomp returns 1 for success");
+    test_assert(Q != NULL, "mat_qr_decomp creates Q matrix");
+    test_assert(R != NULL, "mat_qr_decomp creates R matrix");
+    test_assert(Q->num_rows == 3, "Q matrix has correct rows");
+    test_assert(Q->num_cols == 2, "Q matrix has correct cols");
+    test_assert(R->num_rows == 2, "R matrix has correct rows");
+    test_assert(R->num_cols == 2, "R matrix has correct cols");
+    test_assert(R->is_square == 1, "R matrix is square");
+    
+    // Test that R is upper triangular
+    test_assert(fabs(R->values[1][0]) < EPSILON, "R is upper triangular");
+    
+    // Test that Q has orthonormal columns (Q^T * Q = I)
+    mat* Qt = mat_transpose(Q);
+    mat* QtQ = mat_dot_r(Qt, Q);
+    
+    // Check diagonal elements are 1 (orthonormal)
+    test_assert(fabs(QtQ->values[0][0] - 1.0) < EPSILON, "Q columns are normalized");
+    test_assert(fabs(QtQ->values[1][1] - 1.0) < EPSILON, "Q columns are normalized");
+    
+    // Check off-diagonal elements are 0 (orthogonal)
+    test_assert(fabs(QtQ->values[0][1]) < EPSILON, "Q columns are orthogonal");
+    test_assert(fabs(QtQ->values[1][0]) < EPSILON, "Q columns are orthogonal");
+    
+    // Test QR decomposition property: A = QR
+    mat* QR = mat_dot_r(Q, R);
+    test_assert(mat_equal(A, QR, EPSILON), "QR decomposition satisfies A = QR");
+    
+    // Test square matrix (3x3)
+    mat* A3 = new_mat(3, 3);
+    A3->values[0][0] = 2.0; A3->values[0][1] = -1.0; A3->values[0][2] = 0.0;
+    A3->values[1][0] = -1.0; A3->values[1][1] = 2.0; A3->values[1][2] = -1.0;
+    A3->values[2][0] = 0.0; A3->values[2][1] = -1.0; A3->values[2][2] = 2.0;
+    
+    mat* Q3 = NULL, * R3 = NULL;
+    int result3 = mat_qr_decomp(A3, &Q3, &R3);
+    test_assert(result3 == 1, "mat_qr_decomp works for 3x3 matrix");
+    
+    mat* QR3 = mat_dot_r(Q3, R3);
+    test_assert(mat_equal(A3, QR3, EPSILON), "3x3 QR decomposition satisfies A = QR");
+    
+    // Test error case: more columns than rows
+    mat* bad = new_mat(2, 3);
+    mat* Qbad = NULL, * Rbad = NULL;
+    int bad_result = mat_qr_decomp(bad, &Qbad, &Rbad);
+    test_assert(bad_result == 0, "mat_qr_decomp returns 0 for invalid dimensions");
+    
+    free_mat(A);
+    free_mat(Q);
+    free_mat(R);
+    free_mat(Qt);
+    free_mat(QtQ);
+    free_mat(QR);
+    free_mat(A3);
+    free_mat(Q3);
+    free_mat(R3);
+    free_mat(QR3);
+    free_mat(bad);
+}
+
+void test_mat_qr_solve() {
+    printf("\n--- Testing mat_qr_solve ---\n");
+    
+    // Test overdetermined system (3x2 system, least squares solution)
+    mat* A = new_mat(3, 2);
+    A->values[0][0] = 1.0; A->values[0][1] = 1.0;
+    A->values[1][0] = 1.0; A->values[1][1] = 2.0;
+    A->values[2][0] = 1.0; A->values[2][1] = 3.0;
+    
+    mat* b = new_mat(3, 1);
+    b->values[0][0] = 6.0;
+    b->values[1][0] = 8.0;
+    b->values[2][0] = 10.0;
+    
+    mat* Q = NULL, * R = NULL;
+    mat_qr_decomp(A, &Q, &R);
+    
+    mat* x = mat_qr_solve(Q, R, b);
+    test_assert(x != NULL, "mat_qr_solve returns non-NULL for valid system");
+    test_assert(x->num_rows == 2, "solution has correct dimensions");
+    test_assert(x->num_cols == 1, "solution has correct dimensions");
+    
+    // For this system, the least squares solution should be approximately [4, 2]
+    test_assert(fabs(x->values[0][0] - 4.0) < 1e-10, "QR solve finds correct solution x");
+    test_assert(fabs(x->values[1][0] - 2.0) < 1e-10, "QR solve finds correct solution y");
+    
+    // Verify that Ax approximates b (for overdetermined system)
+    mat* Ax = mat_dot_r(A, x);
+    // The residual should be small for a well-conditioned least squares problem
+    double residual_norm = 0.0;
+    for (unsigned int i = 0; i < 3; i++) {
+        double diff = Ax->values[i][0] - b->values[i][0];
+        residual_norm += diff * diff;
+    }
+    residual_norm = sqrt(residual_norm);
+    test_assert(residual_norm < 1e-10, "QR solution minimizes residual");
+    
+    // Test exact system (square matrix)
+    mat* A2 = new_mat(2, 2);
+    A2->values[0][0] = 1.0; A2->values[0][1] = 2.0;
+    A2->values[1][0] = 3.0; A2->values[1][1] = 4.0;
+    
+    mat* b2 = new_mat(2, 1);
+    b2->values[0][0] = 5.0;  // x + 2y = 5
+    b2->values[1][0] = 11.0; // 3x + 4y = 11
+    
+    mat* Q2 = NULL, * R2 = NULL;
+    mat_qr_decomp(A2, &Q2, &R2);
+    
+    mat* x2 = mat_qr_solve(Q2, R2, b2);
+    
+    // Solution should be x = 1, y = 2
+    test_assert(fabs(x2->values[0][0] - 1.0) < EPSILON, "2x2 system solution x correct");
+    test_assert(fabs(x2->values[1][0] - 2.0) < EPSILON, "2x2 system solution y correct");
+    
+    // Verify Ax = b exactly for square system
+    mat* Ax2 = mat_dot_r(A2, x2);
+    test_assert(mat_equal(Ax2, b2, EPSILON), "QR solution satisfies Ax = b for square system");
+    
+    // Test error case: invalid dimensions
+    mat* x_bad = mat_qr_solve(Q, R2, b);  // Mismatched dimensions
+    test_assert(x_bad == NULL, "mat_qr_solve returns NULL for invalid dimensions");
+    
+    free_mat(A);
+    free_mat(b);
+    free_mat(Q);
+    free_mat(R);
+    free_mat(x);
+    free_mat(Ax);
+    free_mat(A2);
+    free_mat(b2);
+    free_mat(Q2);
+    free_mat(R2);
+    free_mat(x2);
+    free_mat(Ax2);
+}
+
 int main() {
     printf("Running Matrix Library Tests\n");
     printf("============================\n");
@@ -1260,6 +1649,12 @@ int main() {
     test_find_max_pivot_row();
     test_mat_to_ref();
     test_mat_to_rref();
+    test_mat_lup_decomp();
+    test_mat_lup_solve();
+    test_mat_det_lup();
+    test_mat_transpose();
+    test_mat_qr_decomp();
+    test_mat_qr_solve();
     
     print_test_summary();
     

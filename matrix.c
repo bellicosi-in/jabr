@@ -647,3 +647,320 @@ mat* mat_to_rref(mat* m){
   }
   return result;
 }
+// LUP Decomposition: A = P^-1 * L * U
+// Where P is permutation matrix, L is lower triangular, U is upper triangular
+int mat_lup_decomp(mat* A, mat** L, mat** U, mat** P) {
+  if (!A || !A->is_square) {
+    fprintf(stderr, "LUP decomposition requires square matrix");
+    return 0;
+  }
+  
+  unsigned int n = A->num_rows;
+  
+  // Initialize matrices
+  *L = eye_mat(n);        // L starts as identity matrix
+  *U = mat_cp(A);         // U starts as copy of A
+  *P = eye_mat(n);        // P starts as identity matrix
+  
+  // Perform LUP decomposition with partial pivoting
+  for (unsigned int k = 0; k < n - 1; k++) {
+    // Step 1: Find the row with maximum absolute value in column k (partial pivoting)
+    int pivot_row = find_max_pivot_row(*U, k, k);
+    
+    if (pivot_row == -1) {
+      // Matrix is singular - all remaining elements in column k are effectively zero
+      continue;
+    }
+    
+    // Step 2: Swap rows if necessary for numerical stability
+    if ((unsigned int)pivot_row != k) {
+      mat_row_swap_r(*U, k, (unsigned int)pivot_row);
+      mat_row_swap_r(*P, k, (unsigned int)pivot_row);
+      
+      // Also swap corresponding rows in L (for the part that's already computed)
+      for (unsigned int j = 0; j < k; j++) {
+        double temp = (*L)->values[k][j];
+        (*L)->values[k][j] = (*L)->values[pivot_row][j];
+        (*L)->values[pivot_row][j] = temp;
+      }
+    }
+    
+    // Step 3: Eliminate entries below the pivot
+    double pivot_val = (*U)->values[k][k];
+    
+    if (fabs(pivot_val) < EPSILON) {
+      continue; // Skip if pivot is too small
+    }
+    
+    for (unsigned int i = k + 1; i < n; i++) {
+      // Calculate the multiplier
+      double multiplier = (*U)->values[i][k] / pivot_val;
+      
+      // Store multiplier in L matrix
+      (*L)->values[i][k] = multiplier;
+      
+      // Eliminate the entry in U by subtracting multiplier * row k from row i
+      for (unsigned int j = k; j < n; j++) {
+        (*U)->values[i][j] -= multiplier * (*U)->values[k][j];
+      }
+    }
+  }
+  
+  return 1; // Success
+}
+
+// Solve the system Ax = b using LUP decomposition
+// We have PA = LU, so PAx = Pb
+// This gives us LUx = Pb
+// We solve this in two steps: Ly = Pb (forward substitution), then Ux = y (backward substitution)
+mat* mat_lup_solve(mat* L, mat* U, mat* P, mat* b) {
+  if (!L || !U || !P || !b) {
+    fprintf(stderr, "Invalid input matrices for LUP solve");
+    return NULL;
+  }
+  
+  if (!L->is_square || !U->is_square || !P->is_square || 
+      L->num_rows != U->num_rows || L->num_rows != P->num_rows ||
+      b->num_rows != L->num_rows || b->num_cols != 1) {
+    fprintf(stderr, "Matrix dimensions incompatible for LUP solve");
+    return NULL;
+  }
+  
+  unsigned int n = L->num_rows;
+  
+  // Step 1: Compute Pb (apply permutation to b)
+  mat* Pb = mat_dot_r(P, b);
+  
+  // Step 2: Forward substitution - solve Ly = Pb
+  mat* y = new_mat(n, 1);
+  for (unsigned int i = 0; i < n; i++) {
+    double sum = 0.0;
+    for (unsigned int j = 0; j < i; j++) {
+      sum += L->values[i][j] * y->values[j][0];
+    }
+    y->values[i][0] = (Pb->values[i][0] - sum) / L->values[i][i];
+  }
+  
+  // Step 3: Backward substitution - solve Ux = y
+  mat* x = new_mat(n, 1);
+  for (int i = (int)n - 1; i >= 0; i--) { // Note: using int to handle i >= 0 properly
+    double sum = 0.0;
+    for (unsigned int j = (unsigned int)i + 1; j < n; j++) {
+      sum += U->values[i][j] * x->values[j][0];
+    }
+    
+    if (fabs(U->values[i][i]) < EPSILON) {
+      fprintf(stderr, "Matrix is singular - cannot solve system");
+      free_mat(Pb);
+      free_mat(y);
+      free_mat(x);
+      return NULL;
+    }
+    
+    x->values[i][0] = (y->values[i][0] - sum) / U->values[i][i];
+  }
+  
+  // Cleanup temporary matrices
+  free_mat(Pb);
+  free_mat(y);
+  
+  return x;
+}
+
+// Compute determinant using LUP decomposition
+// det(A) = det(P^-1) * det(L) * det(U)
+// det(P^-1) = (-1)^(number of row swaps)
+// det(L) = 1 (since L has 1s on diagonal)  
+// det(U) = product of diagonal elements
+double mat_det_lup(mat* L, mat* U, mat* P) {
+  if (!L || !U || !P) {
+    fprintf(stderr, "Invalid matrices for determinant computation");
+    return 0.0;
+  }
+  
+  if (!L->is_square || !U->is_square || !P->is_square || 
+      L->num_rows != U->num_rows || L->num_rows != P->num_rows) {
+    fprintf(stderr, "Matrices must be square and same size for determinant");
+    return 0.0;
+  }
+  
+  unsigned int n = L->num_rows;
+  
+  // Step 1: Count the number of row swaps in P
+  // We do this by counting inversions in the permutation
+  int swap_count = 0;
+  for (unsigned int i = 0; i < n; i++) {
+    for (unsigned int j = 0; j < n; j++) {
+      if (fabs(P->values[i][j] - 1.0) < EPSILON) {
+        // Found the 1 in row i, it should be in column i for identity
+        if (j != i) {
+          // Count this as contributing to swaps
+          for (unsigned int k = i + 1; k < n; k++) {
+            for (unsigned int l = 0; l < j; l++) {
+              if (fabs(P->values[k][l] - 1.0) < EPSILON) {
+                swap_count++;
+              }
+            }
+          }
+        }
+        break;
+      }
+    }
+  }
+  
+  // Step 2: Compute det(U) = product of diagonal elements
+  double det_U = 1.0;
+  for (unsigned int i = 0; i < n; i++) {
+    det_U *= U->values[i][i];
+  }
+  
+  // Step 3: det(A) = (-1)^swap_count * det(U)
+  double det_P_inv = (swap_count % 2 == 0) ? 1.0 : -1.0;
+  
+  return det_P_inv * det_U;
+}
+
+// Matrix transpose - needed for QR decomposition
+mat* mat_transpose(mat* matrix) {
+  if (!matrix) {
+    fprintf(stderr, "Cannot transpose NULL matrix\n");
+    return NULL;
+  }
+  
+  mat* transposed = new_mat(matrix->num_cols, matrix->num_rows);
+  
+  for (unsigned int i = 0; i < matrix->num_rows; i++) {
+    for (unsigned int j = 0; j < matrix->num_cols; j++) {
+      transposed->values[j][i] = matrix->values[i][j];
+    }
+  }
+  
+  return transposed;
+}
+
+// QR Decomposition using Modified Gram-Schmidt process
+// A = QR where Q is orthogonal and R is upper triangular
+int mat_qr_decomp(mat* A, mat** Q, mat** R) {
+  if (!A) {
+    fprintf(stderr, "QR decomposition requires non-NULL matrix\n");
+    return 0;
+  }
+  
+  if (A->num_rows < A->num_cols) {
+    fprintf(stderr, "QR decomposition requires m >= n (rows >= cols)\n");
+    return 0;
+  }
+  
+  unsigned int m = A->num_rows;
+  unsigned int n = A->num_cols;
+  
+  // Initialize Q and R matrices
+  *Q = new_mat(m, n);        // Q is m x n (same size as A for thin QR)
+  *R = new_mat(n, n);        // R is n x n upper triangular
+  
+  // Copy A to Q initially (we'll modify Q during the process)
+  for (unsigned int i = 0; i < m; i++) {
+    for (unsigned int j = 0; j < n; j++) {
+      (*Q)->values[i][j] = A->values[i][j];
+    }
+  }
+  
+  // Modified Gram-Schmidt process
+  for (unsigned int k = 0; k < n; k++) {
+    // Step 1: Compute R[k][k] = ||q_k|| (norm of column k in Q)
+    double norm_squared = 0.0;
+    for (unsigned int i = 0; i < m; i++) {
+      norm_squared += (*Q)->values[i][k] * (*Q)->values[i][k];
+    }
+    
+    double norm = sqrt(norm_squared);
+    
+    if (norm < EPSILON) {
+      fprintf(stderr, "Matrix is rank deficient - QR decomposition may be unstable\n");
+      // Continue anyway, but this indicates linear dependence
+      norm = EPSILON; // Avoid division by zero
+    }
+    
+    (*R)->values[k][k] = norm;
+    
+    // Step 2: Normalize column k of Q: q_k = q_k / ||q_k||
+    for (unsigned int i = 0; i < m; i++) {
+      (*Q)->values[i][k] /= norm;
+    }
+    
+    // Step 3: Orthogonalize remaining columns against q_k
+    for (unsigned int j = k + 1; j < n; j++) {
+      // Compute R[k][j] = q_k^T * q_j (dot product)
+      double dot_product = 0.0;
+      for (unsigned int i = 0; i < m; i++) {
+        dot_product += (*Q)->values[i][k] * (*Q)->values[i][j];
+      }
+      
+      (*R)->values[k][j] = dot_product;
+      
+      // Update q_j = q_j - R[k][j] * q_k
+      for (unsigned int i = 0; i < m; i++) {
+        (*Q)->values[i][j] -= dot_product * (*Q)->values[i][k];
+      }
+    }
+  }
+  
+  return 1; // Success
+}
+
+// Solve the system Ax = b using QR decomposition
+// We have A = QR, so QRx = b
+// This gives us Rx = Q^T * b (since Q^T * Q = I for orthogonal Q)
+// We solve this by backward substitution since R is upper triangular
+mat* mat_qr_solve(mat* Q, mat* R, mat* b) {
+  if (!Q || !R || !b) {
+    fprintf(stderr, "Invalid input matrices for QR solve\n");
+    return NULL;
+  }
+  
+  if (Q->num_rows != b->num_rows || b->num_cols != 1 || 
+      Q->num_cols != R->num_rows || !R->is_square) {
+    fprintf(stderr, "Matrix dimensions incompatible for QR solve\n");
+    return NULL;
+  }
+  
+  unsigned int m = Q->num_rows;
+  unsigned int n = Q->num_cols;
+  
+  // Step 1: Compute Q^T * b
+  mat* QtB = new_mat(n, 1);
+  for (unsigned int i = 0; i < n; i++) {
+    double sum = 0.0;
+    for (unsigned int j = 0; j < m; j++) {
+      sum += Q->values[j][i] * b->values[j][0]; // Q^T[i][j] = Q[j][i]
+    }
+    QtB->values[i][0] = sum;
+  }
+  
+  // Step 2: Backward substitution to solve Rx = Q^T * b
+  mat* x = new_mat(n, 1);
+  for (int i = (int)n - 1; i >= 0; i--) { // Use int to handle i >= 0 properly
+    double sum = 0.0;
+    
+    // Sum up R[i][j] * x[j] for j > i
+    for (unsigned int j = (unsigned int)i + 1; j < n; j++) {
+      sum += R->values[i][j] * x->values[j][0];
+    }
+    
+    // Check for singular matrix (zero diagonal element)
+    if (fabs(R->values[i][i]) < EPSILON) {
+      fprintf(stderr, "R matrix is singular - cannot solve system\n");
+      free_mat(QtB);
+      free_mat(x);
+      return NULL;
+    }
+    
+    // Solve for x[i]
+    x->values[i][0] = (QtB->values[i][0] - sum) / R->values[i][i];
+  }
+  
+  // Cleanup temporary matrix
+  free_mat(QtB);
+  
+  return x;
+}
