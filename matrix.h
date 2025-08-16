@@ -56,6 +56,18 @@ mat* mat_row_addrow(mat* matrix, unsigned int where, unsigned int row, double mu
 mat* mat_smult(mat* matrix, double num);
 int mat_smult_r(mat* matrix, double num);
 
+//modifying the structure of a matrix
+//removing a column
+mat* mat_remove_column(mat* matrix, unsigned int column);
+//removing a row
+mat* mat_remove_row(mat* matrix, unsigned int row);
+//swapping rows
+int mat_row_swap_r(mat* matrix, unsigned int row1, unsigned int row2); //modifies the matrix itself
+mat* mat_row_swap(mat* matrix, unsigned int row1, unsigned int row2); //returns a new matrix
+
+//swapping columns
+int mat_col_swap_r(mat* matrix, unsigned int col1, unsigned int col2);
+mat* mat_col_swap(mat* matrix, unsigned int col1, unsigned int col2);
 
 
 #endif

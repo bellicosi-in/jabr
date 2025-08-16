@@ -290,3 +290,100 @@ int mat_smult_r(mat* matrix, double num){
   }
   return 1;
 }
+
+//removing a column
+mat* mat_remove_column(mat* matrix, unsigned int column){
+  if(column >= matrix->num_cols){
+    fprintf(stderr, "this column cannot be removed");
+    return NULL;
+  }
+  if(matrix->num_cols <= 1){
+    fprintf(stderr, "cannot remove column - would result in matrix with 0 columns");
+    return NULL;
+  }
+  mat* new_matrix = new_mat(matrix->num_rows, matrix->num_cols-1);
+  for(int i = 0; i < matrix->num_rows; i++){
+    int dest_col = 0;//position in destination matrix
+
+    for(int src_col = 0; src_col < matrix->num_cols; src_col++){
+      if(src_col != column){
+        new_matrix->values[i][dest_col] = matrix->values[i][src_col];
+        dest_col++;
+      }
+      
+    }
+  }
+  return new_matrix;
+}
+
+
+//removing a row
+//TODO implement it using memcpy
+mat* mat_remove_row(mat* matrix, unsigned int row){
+  if(matrix->num_rows <= row){
+    fprintf(stderr, "this row cant be removed");
+    return NULL;
+  }
+  if(matrix->num_rows <= 1){
+    fprintf(stderr, "cannot remove row - would result in matrix with 0 rows");
+    return NULL;
+  }
+  mat* new_matrix = new_mat(matrix->num_rows -  1, matrix->num_cols);
+  int dest_row = 0;
+  for(int src_row = 0; src_row < matrix->num_rows; src_row++){
+    if(src_row!= row){ //if this is not the row to remove
+      for(int j = 0; j < matrix->num_cols; j++){
+        new_matrix->values[dest_row][j] = matrix->values[src_row][j];
+        
+      }
+      dest_row++; //increment after copying the entire row
+    }
+  }
+  return new_matrix;
+}
+
+//swapping the rows
+int mat_row_swap_r(mat* matrix, unsigned int row1, unsigned int row2){
+  if((row1 >= matrix->num_rows) || (row2 >= matrix->num_rows)){
+    fprintf(stderr, "cannot swap these rows");
+    return 0;
+  }
+  double* temp = matrix->values[row1];
+  matrix->values[row1] = matrix->values[row2];
+  matrix->values[row2] = temp;
+  return 1;
+}
+
+mat* mat_row_swap(mat* matrix, unsigned int row1, unsigned int row2){
+  mat* new_matrix = mat_cp(matrix);
+  if(!(mat_row_swap_r(new_matrix, row1, row2))){
+    free_mat(new_matrix);
+    return NULL;
+  }  
+  return new_matrix;
+}
+
+int mat_col_swap_r(mat* matrix, unsigned int col1, unsigned int col2){
+  if(col1 >= matrix->num_cols || col2 >= matrix->num_cols){
+    fprintf(stderr, "cannot swap these columns");
+    return 0;
+  }
+  double tmp;
+  int j;
+  for(j = 0; j < matrix->num_rows; j++){
+    tmp = matrix->values[j][col1];
+    matrix->values[j][col1] = matrix->values[j][col2];
+    matrix->values[j][col2] = tmp;
+    
+  }
+  return 1;
+}
+
+mat* mat_col_swap(mat* matrix, unsigned int col1, unsigned int col2){
+  mat* new_matrix = mat_cp(matrix);
+  if(!mat_col_swap_r(new_matrix, col1, col2)){
+    free_mat(new_matrix);
+    return NULL;
+  }
+  return new_matrix;
+}

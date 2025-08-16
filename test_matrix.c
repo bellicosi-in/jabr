@@ -523,6 +523,204 @@ void test_mat_smult() {
     free_mat(negative);
 }
 
+void test_mat_remove_column() {
+    printf("\n--- Testing mat_remove_column ---\n");
+    
+    mat* m = new_mat(3, 4);
+    m->values[0][0] = 1.0; m->values[0][1] = 2.0; m->values[0][2] = 3.0; m->values[0][3] = 4.0;
+    m->values[1][0] = 5.0; m->values[1][1] = 6.0; m->values[1][2] = 7.0; m->values[1][3] = 8.0;
+    m->values[2][0] = 9.0; m->values[2][1] = 10.0; m->values[2][2] = 11.0; m->values[2][3] = 12.0;
+    
+    // Remove column 1 (0-indexed)
+    mat* result = mat_remove_column(m, 1);
+    test_assert(result != NULL, "mat_remove_column returns non-NULL for valid column");
+    test_assert(result->num_rows == 3, "mat_remove_column preserves row count");
+    test_assert(result->num_cols == 3, "mat_remove_column reduces column count by 1");
+    test_assert(result->is_square == 1, "mat_remove_column updates is_square flag correctly");
+    
+    // Check values: should be [1,3,4], [5,7,8], [9,11,12]
+    test_assert(fabs(result->values[0][0] - 1.0) < EPSILON, "mat_remove_column preserves correct values");
+    test_assert(fabs(result->values[0][1] - 3.0) < EPSILON, "mat_remove_column skips removed column");
+    test_assert(fabs(result->values[0][2] - 4.0) < EPSILON, "mat_remove_column preserves values after removed column");
+    test_assert(fabs(result->values[1][0] - 5.0) < EPSILON, "mat_remove_column works across all rows");
+    test_assert(fabs(result->values[1][1] - 7.0) < EPSILON, "mat_remove_column works across all rows");
+    test_assert(fabs(result->values[2][2] - 12.0) < EPSILON, "mat_remove_column works across all rows");
+    
+    // Test removing first column
+    mat* first_removed = mat_remove_column(m, 0);
+    test_assert(fabs(first_removed->values[0][0] - 2.0) < EPSILON, "mat_remove_column works for first column");
+    test_assert(fabs(first_removed->values[0][1] - 3.0) < EPSILON, "mat_remove_column works for first column");
+    
+    // Test removing last column
+    mat* last_removed = mat_remove_column(m, 3);
+    test_assert(fabs(last_removed->values[0][2] - 3.0) < EPSILON, "mat_remove_column works for last column");
+    test_assert(last_removed->num_cols == 3, "mat_remove_column reduces column count correctly");
+    
+    // Test invalid column
+    mat* invalid = mat_remove_column(m, 5);
+    test_assert(invalid == NULL, "mat_remove_column returns NULL for invalid column");
+    
+    // Test edge case: removing from 1-column matrix should fail gracefully
+    mat* single_col = new_mat(2, 1);
+    mat* edge_case = mat_remove_column(single_col, 0);
+    test_assert(edge_case == NULL, "mat_remove_column returns NULL when removing from 1-column matrix");
+    
+    free_mat(m);
+    free_mat(result);
+    free_mat(first_removed);
+    free_mat(last_removed);
+    free_mat(single_col);
+    if(edge_case) free_mat(edge_case);
+}
+
+void test_mat_remove_row() {
+    printf("\n--- Testing mat_remove_row ---\n");
+    
+    mat* m = new_mat(3, 4);
+    m->values[0][0] = 1.0; m->values[0][1] = 2.0; m->values[0][2] = 3.0; m->values[0][3] = 4.0;
+    m->values[1][0] = 5.0; m->values[1][1] = 6.0; m->values[1][2] = 7.0; m->values[1][3] = 8.0;
+    m->values[2][0] = 9.0; m->values[2][1] = 10.0; m->values[2][2] = 11.0; m->values[2][3] = 12.0;
+    
+    // Remove row 1 (middle row)
+    mat* result = mat_remove_row(m, 1);
+    test_assert(result != NULL, "mat_remove_row returns non-NULL for valid row");
+    test_assert(result->num_rows == 2, "mat_remove_row reduces row count by 1");
+    test_assert(result->num_cols == 4, "mat_remove_row preserves column count");
+    test_assert(result->is_square == 0, "mat_remove_row updates is_square flag correctly");
+    
+    // Check values: should be first row [1,2,3,4], then third row [9,10,11,12]
+    test_assert(fabs(result->values[0][0] - 1.0) < EPSILON, "mat_remove_row preserves first row");
+    test_assert(fabs(result->values[0][3] - 4.0) < EPSILON, "mat_remove_row preserves first row");
+    test_assert(fabs(result->values[1][0] - 9.0) < EPSILON, "mat_remove_row moves later rows up");
+    test_assert(fabs(result->values[1][3] - 12.0) < EPSILON, "mat_remove_row moves later rows up");
+    
+    // Test removing first row
+    mat* first_removed = mat_remove_row(m, 0);
+    test_assert(fabs(first_removed->values[0][0] - 5.0) < EPSILON, "mat_remove_row works for first row");
+    test_assert(fabs(first_removed->values[1][0] - 9.0) < EPSILON, "mat_remove_row works for first row");
+    
+    // Test removing last row
+    mat* last_removed = mat_remove_row(m, 2);
+    test_assert(fabs(last_removed->values[1][0] - 5.0) < EPSILON, "mat_remove_row works for last row");
+    test_assert(last_removed->num_rows == 2, "mat_remove_row reduces row count correctly");
+    
+    // Test invalid row
+    mat* invalid = mat_remove_row(m, 5);
+    test_assert(invalid == NULL, "mat_remove_row returns NULL for invalid row");
+    
+    // Test edge case: removing from 1-row matrix should fail gracefully
+    mat* single_row = new_mat(1, 3);
+    mat* edge_case = mat_remove_row(single_row, 0);
+    test_assert(edge_case == NULL, "mat_remove_row returns NULL when removing from 1-row matrix");
+    free_mat(single_row);
+    
+    free_mat(m);
+    free_mat(result);
+    free_mat(first_removed);
+    free_mat(last_removed);
+}
+
+void test_mat_row_swap() {
+    printf("\n--- Testing mat_row_swap and mat_row_swap_r ---\n");
+    
+    mat* m = new_mat(3, 3);
+    m->values[0][0] = 1.0; m->values[0][1] = 2.0; m->values[0][2] = 3.0;
+    m->values[1][0] = 4.0; m->values[1][1] = 5.0; m->values[1][2] = 6.0;
+    m->values[2][0] = 7.0; m->values[2][1] = 8.0; m->values[2][2] = 9.0;
+    
+    // Test in-place row swap
+    int result = mat_row_swap_r(m, 0, 2);
+    test_assert(result == 1, "mat_row_swap_r returns 1 for valid rows");
+    
+    // Check that rows 0 and 2 are swapped
+    test_assert(fabs(m->values[0][0] - 7.0) < EPSILON, "mat_row_swap_r swaps rows correctly");
+    test_assert(fabs(m->values[0][1] - 8.0) < EPSILON, "mat_row_swap_r swaps rows correctly");
+    test_assert(fabs(m->values[0][2] - 9.0) < EPSILON, "mat_row_swap_r swaps rows correctly");
+    test_assert(fabs(m->values[2][0] - 1.0) < EPSILON, "mat_row_swap_r swaps rows correctly");
+    test_assert(fabs(m->values[2][1] - 2.0) < EPSILON, "mat_row_swap_r swaps rows correctly");
+    test_assert(fabs(m->values[2][2] - 3.0) < EPSILON, "mat_row_swap_r swaps rows correctly");
+    
+    // Check middle row unchanged
+    test_assert(fabs(m->values[1][0] - 4.0) < EPSILON, "mat_row_swap_r preserves unaffected rows");
+    
+    // Test swapping same row (should be no-op)
+    mat_row_swap_r(m, 1, 1);
+    test_assert(fabs(m->values[1][0] - 4.0) < EPSILON, "mat_row_swap_r handles same row swap");
+    
+    // Test invalid row swap
+    int invalid_result = mat_row_swap_r(m, 0, 5);
+    test_assert(invalid_result == 0, "mat_row_swap_r returns 0 for invalid row");
+    
+    // Test new matrix version
+    mat* original = new_mat(2, 2);
+    original->values[0][0] = 1.0; original->values[0][1] = 2.0;
+    original->values[1][0] = 3.0; original->values[1][1] = 4.0;
+    
+    mat* swapped = mat_row_swap(original, 0, 1);
+    test_assert(swapped != NULL, "mat_row_swap returns non-NULL for valid input");
+    test_assert(swapped != original, "mat_row_swap creates new matrix");
+    test_assert(fabs(swapped->values[0][0] - 3.0) < EPSILON, "mat_row_swap swaps correctly");
+    test_assert(fabs(swapped->values[1][0] - 1.0) < EPSILON, "mat_row_swap swaps correctly");
+    test_assert(fabs(original->values[0][0] - 1.0) < EPSILON, "mat_row_swap preserves original");
+    
+    // Test invalid input for new matrix version
+    mat* invalid_swap = mat_row_swap(original, 0, 5);
+    test_assert(invalid_swap == NULL, "mat_row_swap returns NULL for invalid input");
+    
+    free_mat(m);
+    free_mat(original);
+    free_mat(swapped);
+}
+
+void test_mat_col_swap() {
+    printf("\n--- Testing mat_col_swap and mat_col_swap_r ---\n");
+    
+    mat* m = new_mat(3, 3);
+    m->values[0][0] = 1.0; m->values[0][1] = 2.0; m->values[0][2] = 3.0;
+    m->values[1][0] = 4.0; m->values[1][1] = 5.0; m->values[1][2] = 6.0;
+    m->values[2][0] = 7.0; m->values[2][1] = 8.0; m->values[2][2] = 9.0;
+    
+    // Test in-place column swap
+    int result = mat_col_swap_r(m, 0, 2);
+    test_assert(result == 1, "mat_col_swap_r returns 1 for valid columns");
+    
+    // Check that columns 0 and 2 are swapped
+    test_assert(fabs(m->values[0][0] - 3.0) < EPSILON, "mat_col_swap_r swaps columns correctly");
+    test_assert(fabs(m->values[1][0] - 6.0) < EPSILON, "mat_col_swap_r swaps columns correctly");
+    test_assert(fabs(m->values[2][0] - 9.0) < EPSILON, "mat_col_swap_r swaps columns correctly");
+    test_assert(fabs(m->values[0][2] - 1.0) < EPSILON, "mat_col_swap_r swaps columns correctly");
+    test_assert(fabs(m->values[1][2] - 4.0) < EPSILON, "mat_col_swap_r swaps columns correctly");
+    test_assert(fabs(m->values[2][2] - 7.0) < EPSILON, "mat_col_swap_r swaps columns correctly");
+    
+    // Check middle column unchanged
+    test_assert(fabs(m->values[0][1] - 2.0) < EPSILON, "mat_col_swap_r preserves unaffected columns");
+    
+    // Test invalid column swap
+    int invalid_result = mat_col_swap_r(m, 0, 5);
+    test_assert(invalid_result == 0, "mat_col_swap_r returns 0 for invalid column");
+    
+    // Test new matrix version
+    mat* original = new_mat(2, 2);
+    original->values[0][0] = 1.0; original->values[0][1] = 2.0;
+    original->values[1][0] = 3.0; original->values[1][1] = 4.0;
+    
+    mat* swapped = mat_col_swap(original, 0, 1);
+    test_assert(swapped != NULL, "mat_col_swap returns non-NULL for valid input");
+    test_assert(swapped != original, "mat_col_swap creates new matrix");
+    test_assert(fabs(swapped->values[0][0] - 2.0) < EPSILON, "mat_col_swap swaps correctly");
+    test_assert(fabs(swapped->values[0][1] - 1.0) < EPSILON, "mat_col_swap swaps correctly");
+    test_assert(fabs(swapped->values[1][0] - 4.0) < EPSILON, "mat_col_swap swaps correctly");
+    test_assert(fabs(original->values[0][0] - 1.0) < EPSILON, "mat_col_swap preserves original");
+    
+    // Test invalid input for new matrix version
+    mat* invalid_swap = mat_col_swap(original, 0, 5);
+    test_assert(invalid_swap == NULL, "mat_col_swap returns NULL for invalid input");
+    
+    free_mat(m);
+    free_mat(original);
+    free_mat(swapped);
+}
+
 int main() {
     printf("Running Matrix Library Tests\n");
     printf("============================\n");
@@ -545,6 +743,10 @@ int main() {
     test_mat_col_mult();
     test_mat_row_addrow();
     test_mat_smult();
+    test_mat_remove_column();
+    test_mat_remove_row();
+    test_mat_row_swap();
+    test_mat_col_swap();
     
     print_test_summary();
     
